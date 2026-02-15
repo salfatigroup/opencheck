@@ -1,0 +1,11 @@
+baseUrl: "http://localhost:3000"
+browser: "chromium"
+headless: true
+timeout: 60000
+maxAttempts: 3
+cacheDir: ".opencheck-cache"
+model: "claude-sonnet-4-5-20250929"
+tests:
+  - case: "check login is working"
+  - case: "verify dashboard loads after login"
+  - case: "check logout redirects to login page"

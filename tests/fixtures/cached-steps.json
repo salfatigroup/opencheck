@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "testCase": "check login is working",
+  "baseUrl": "http://localhost:3000",
+  "steps": [
+    {
+      "toolName": "browser_navigate",
+      "toolInput": { "url": "http://localhost:3000" }
+    },
+    {
+      "toolName": "browser_snapshot",
+      "toolInput": {}
+    },
+    {
+      "toolName": "browser_type",
+      "toolInput": { "selector": "#username", "text": "admin" }
+    },
+    {
+      "toolName": "browser_type",
+      "toolInput": { "selector": "#password", "text": "password123" }
+    },
+    {
+      "toolName": "browser_click",
+      "toolInput": { "selector": "#login-button" }
+    }
+  ],
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}

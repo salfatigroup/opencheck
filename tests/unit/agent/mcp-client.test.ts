@@ -1,0 +1,44 @@
+import { describe, it, expect } from "vitest";
+import { buildMcpServerConfig } from "../../../src/agent/mcp-client.ts";
+import type { Config } from "../../../src/config/types.ts";
+
+describe("buildMcpServerConfig", () => {
+  const baseConfig: Config = {
+    baseUrl: "http://localhost:3000",
+    browser: "chromium",
+    headless: true,
+    timeout: 60000,
+    maxAttempts: 3,
+    cacheDir: ".opencheck-cache",
+    model: "claude-sonnet-4-5-20250929",
+    tests: [{ case: "check login" }],
+  };
+
+  it("returns config with correct structure", () => {
+    const config = buildMcpServerConfig(baseConfig);
+    expect(config).toHaveProperty("mcpServers");
+    expect(config.mcpServers).toHaveProperty("playwright");
+    expect(config.mcpServers.playwright.transport).toBe("stdio");
+    expect(config.mcpServers.playwright.command).toBe("npx");
+  });
+
+  it("includes headless flag when config.headless is true", () => {
+    const config = buildMcpServerConfig(baseConfig);
+    expect(config.mcpServers.playwright.args).toContain("--headless");
+  });
+
+  it("omits headless flag when config.headless is false", () => {
+    const config = buildMcpServerConfig({ ...baseConfig, headless: false });
+    expect(config.mcpServers.playwright.args).not.toContain("--headless");
+  });
+
+  it("includes browser flag from config", () => {
+    const config = buildMcpServerConfig(baseConfig);
+    expect(config.mcpServers.playwright.args.some((a) => a.includes("chromium"))).toBe(true);
+  });
+
+  it("uses the specified browser variant", () => {
+    const config = buildMcpServerConfig({ ...baseConfig, browser: "firefox" });
+    expect(config.mcpServers.playwright.args).toContain("--browser=firefox");
+  });
+});

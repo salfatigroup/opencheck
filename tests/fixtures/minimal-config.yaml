@@ -1,0 +1,2 @@
+tests:
+  - case: "basic smoke test"

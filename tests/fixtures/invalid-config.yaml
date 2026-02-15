@@ -1,0 +1,3 @@
+baseUrl: "not-a-valid-url"
+browser: "opera"
+tests: []
