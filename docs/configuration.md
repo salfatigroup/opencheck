@@ -21,6 +21,7 @@ tests:
   - case: "verify dashboard loads after login"
     baseUrl: "http://localhost:3000/dashboard"
     timeout: 30000
+  - case: "GET /api/health returns 200"
 ```
 
 ## Fields
@@ -44,7 +45,7 @@ Each entry in the `tests` array supports:
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `case` | `string` | _(required)_ | Natural language description of what to test. Cannot be empty. |
+| `case` | `string` | _(required)_ | Natural language description of what to test. The AI auto-selects browser or API tools based on this. |
 | `baseUrl` | `string` (URL) | _(inherits top-level)_ | Override the base URL for this specific test. |
 | `timeout` | `number` (ms) | _(inherits top-level)_ | Override the timeout for this specific test. |
 

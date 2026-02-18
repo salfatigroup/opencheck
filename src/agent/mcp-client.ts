@@ -11,36 +11,42 @@ interface McpServerEntry {
 
 /** MCP server configuration for MultiServerMCPClient */
 export interface McpServerConfig {
-  mcpServers: { playwright: McpServerEntry };
+  mcpServers: Record<string, McpServerEntry>;
 }
 
 /**
- * Build the MCP server configuration for Playwright.
- * Single source of truth for MCP config — used by both AgentFactory and createMcpClient.
+ * Build the MCP server configuration with both Playwright and curl servers.
+ * The AI agent receives all tools and autonomously chooses which to use
+ * based on the test case description.
  * @param config - The OpenCheck configuration
  */
 export function buildMcpServerConfig(config: Config): McpServerConfig {
-  const args = ["-y", "@playwright/mcp@latest"];
+  const playwrightArgs = ["-y", "@playwright/mcp@latest"];
 
   if (config.headless) {
-    args.push("--headless");
+    playwrightArgs.push("--headless");
   }
 
-  args.push(`--browser=${config.browser}`);
+  playwrightArgs.push(`--browser=${config.browser}`);
 
   return {
     mcpServers: {
       playwright: {
         transport: "stdio" as const,
         command: "npx",
-        args,
+        args: playwrightArgs,
+      },
+      curl: {
+        transport: "stdio" as const,
+        command: "npx",
+        args: ["-y", "@mcp-get-community/server-curl"],
       },
     },
   };
 }
 
 /**
- * Create and initialize an MCP client with Playwright tools.
+ * Create and initialize an MCP client with both browser and API tools.
  * @param config - The OpenCheck configuration
  * @returns Object with tools array and a cleanup function
  */

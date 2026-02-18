@@ -14,31 +14,51 @@ describe("buildMcpServerConfig", () => {
     tests: [{ case: "check login" }],
   };
 
-  it("returns config with correct structure", () => {
+  it("returns config with playwright server", () => {
     const config = buildMcpServerConfig(baseConfig);
     expect(config).toHaveProperty("mcpServers");
     expect(config.mcpServers).toHaveProperty("playwright");
-    expect(config.mcpServers.playwright.transport).toBe("stdio");
-    expect(config.mcpServers.playwright.command).toBe("npx");
+    expect(config.mcpServers["playwright"]!.transport).toBe("stdio");
+    expect(config.mcpServers["playwright"]!.command).toBe("npx");
   });
 
   it("includes headless flag when config.headless is true", () => {
     const config = buildMcpServerConfig(baseConfig);
-    expect(config.mcpServers.playwright.args).toContain("--headless");
+    expect(config.mcpServers["playwright"]!.args).toContain("--headless");
   });
 
   it("omits headless flag when config.headless is false", () => {
     const config = buildMcpServerConfig({ ...baseConfig, headless: false });
-    expect(config.mcpServers.playwright.args).not.toContain("--headless");
+    expect(config.mcpServers["playwright"]!.args).not.toContain("--headless");
   });
 
   it("includes browser flag from config", () => {
     const config = buildMcpServerConfig(baseConfig);
-    expect(config.mcpServers.playwright.args.some((a) => a.includes("chromium"))).toBe(true);
+    expect(config.mcpServers["playwright"]!.args.some((a) => a.includes("chromium"))).toBe(true);
   });
 
   it("uses the specified browser variant", () => {
     const config = buildMcpServerConfig({ ...baseConfig, browser: "firefox" });
-    expect(config.mcpServers.playwright.args).toContain("--browser=firefox");
+    expect(config.mcpServers["playwright"]!.args).toContain("--browser=firefox");
+  });
+
+  it("includes curl server for API testing", () => {
+    const config = buildMcpServerConfig(baseConfig);
+    expect(config.mcpServers).toHaveProperty("curl");
+    expect(config.mcpServers["curl"]!.transport).toBe("stdio");
+    expect(config.mcpServers["curl"]!.command).toBe("npx");
+  });
+
+  it("curl server uses correct package", () => {
+    const config = buildMcpServerConfig(baseConfig);
+    expect(config.mcpServers["curl"]!.args).toContain("@mcp-get-community/server-curl");
+  });
+
+  it("includes both playwright and curl servers simultaneously", () => {
+    const config = buildMcpServerConfig(baseConfig);
+    const serverNames = Object.keys(config.mcpServers);
+    expect(serverNames).toContain("playwright");
+    expect(serverNames).toContain("curl");
+    expect(serverNames).toHaveLength(2);
   });
 });
