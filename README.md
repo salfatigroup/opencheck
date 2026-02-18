@@ -6,7 +6,7 @@ By [Salfati Group](https://salfati.group) | [opencheck.ai](https://opencheck.ai)
 
 ---
 
-Write test cases in plain English. An AI agent executes them in a real browser. Successful steps are cached for instant replay on subsequent runs.
+Write test cases in plain English. An AI agent executes them in a real browser or via API calls. Successful steps are cached for instant replay on subsequent runs.
 
 ```yaml
 # tests.yaml
@@ -15,6 +15,7 @@ tests:
   - case: "check login is working"
   - case: "verify dashboard loads after login"
   - case: "check logout redirects to login page"
+  - case: "GET /api/health returns 200"
 ```
 
 ```bash
@@ -35,6 +36,7 @@ The key difference: **the cache layer**.
 | Natural language test cases | ✅ | ✅ | ❌ |
 | YAML config, zero code | ✅ | ❌ | ❌ |
 | CI/CD ready (exit codes + summary) | ✅ | ❌ | ❌ |
+| Browser + API testing (auto-detected) | ✅ | ❌ | ❌ |
 
 ### The cache makes E2E tests viable for CI/CD
 
@@ -111,6 +113,7 @@ bun run src/cli.ts --config tests.yaml
 | AI Agent | LangChain + LangGraph |
 | LLM | Claude (via @langchain/anthropic) |
 | Browser | Playwright MCP (@playwright/mcp) |
+| API | curl MCP (@mcp-get-community/server-curl) |
 | Config | Zod + YAML |
 | CLI | Commander.js |
 

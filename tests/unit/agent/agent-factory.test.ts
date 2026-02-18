@@ -87,6 +87,14 @@ describe("AgentFactory", () => {
     expect(prompt).toContain("TEST_FAILED");
   });
 
+  it("builds unified prompt mentioning both browser and curl tools", () => {
+    const prompt = AgentFactory.buildSystemPrompt("test something", "http://localhost:3000");
+    expect(prompt).toContain("browser");
+    expect(prompt).toContain("curl");
+    expect(prompt).toContain("browser_snapshot");
+    expect(prompt).toContain("API");
+  });
+
   it("executes a test and returns result on success", async () => {
     const factory = new AgentFactory(baseConfig);
     const result = await factory.executeTest("check login is working", "http://localhost:3000");

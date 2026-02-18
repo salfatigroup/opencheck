@@ -8,7 +8,7 @@ OpenCheck is built as 6 clean layers, each with a single responsibility:
 CLI (commander)
  └─> Config (zod + yaml)
  └─> Runner (orchestration)
-      ├─> Agent (LangChain + Playwright MCP)
+      ├─> Agent (LangChain + Playwright MCP + curl MCP)
       ├─> Cache (filesystem)
       └─> Output (console reporter)
 ```
@@ -16,7 +16,7 @@ CLI (commander)
 - **CLI** parses arguments and wires everything together
 - **Config** loads and validates `tests.yaml` via Zod schemas
 - **Runner** orchestrates test execution sequentially
-- **Agent** creates a LangChain ReAct agent with Playwright MCP tools
+- **Agent** creates a LangChain ReAct agent with both Playwright and curl MCP tools
 - **Cache** manages file-based step recordings
 - **Output** formats progress and summary to the console
 
@@ -60,14 +60,16 @@ When the UI changes and cached steps fail:
 ## How the AI Agent Works
 
 Each test gets its own isolated agent with:
-- A fresh **Playwright MCP server** (browser context isolation)
+- A fresh **Playwright MCP server** + **curl MCP server** (both always available)
 - A **LangChain ReAct agent** powered by Claude
-- A **system prompt** that instructs the agent to:
-  - Navigate to the base URL
-  - Perform the actions described in the test case
+- A **unified system prompt** that tells the agent to:
+  - Analyze the test case and choose the right tools
+  - Use browser tools for UI tests, curl for API tests (or both)
   - Respond with `TEST_PASSED` or `TEST_FAILED`
 
-The agent uses accessibility snapshots (not screenshots) to understand page state. This is text-based, faster, and doesn't require vision models.
+The AI **autonomously picks the right tools** based on the test case description — no configuration needed.
+
+For browser tests, the agent uses accessibility snapshots (not screenshots) to understand page state. This is text-based, faster, and doesn't require vision models.
 
 ### Step Recording
 

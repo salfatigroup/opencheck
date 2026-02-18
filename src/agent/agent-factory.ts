@@ -17,25 +17,38 @@ export class AgentFactory {
     this.config = config;
   }
 
-  /** Build the system prompt for a test case */
+  /**
+   * Build the system prompt for a test case.
+   * Mentions both browser and API tools — the AI autonomously
+   * chooses the right tools based on the test case description.
+   */
   static buildSystemPrompt(testCase: string, baseUrl: string): string {
     return [
       "You are a QA automation agent. Your job is to execute the following test case",
-      "in a web browser and determine if it passes or fails.",
+      "and determine if it passes or fails.",
       "",
       `Test case: "${testCase}"`,
       `Base URL: "${baseUrl}"`,
       "",
+      "You have access to both browser automation tools and HTTP/curl tools.",
+      "Choose the appropriate tools based on the test case:",
+      "",
+      "For browser/UI tests:",
+      "- Use browser_navigate, browser_click, browser_type, browser_snapshot",
+      "- Use browser_snapshot to understand page state before acting",
+      "",
+      "For API tests:",
+      "- Use the curl tool to make HTTP requests",
+      "- Check status codes, headers, and response body",
+      "",
       "Instructions:",
-      "1. Navigate to the base URL.",
-      "2. Perform the actions described in the test case.",
+      "1. Analyze the test case and decide which tools to use.",
+      "2. Execute the actions needed to verify the test case.",
       "3. After completing the test, respond with EXACTLY one of:",
       '   - "TEST_PASSED: <brief explanation>"',
       '   - "TEST_FAILED: <brief explanation of what went wrong>"',
       "",
-      "Be methodical. Use browser_snapshot to understand page state before acting.",
-      "Use browser_click, browser_type, browser_navigate as needed.",
-      "If something doesn't work, try alternative approaches before declaring failure.",
+      "Be methodical. If something doesn't work, try alternative approaches before declaring failure.",
     ].join("\n");
   }
 

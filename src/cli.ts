@@ -12,7 +12,7 @@ const program = new Command();
 
 program
   .name("opencheck")
-  .description("AI-powered end-to-end browser test automation")
+  .description("AI-powered end-to-end browser and API test automation")
   .version("0.1.0")
   .requiredOption("-c, --config <path>", "Path to tests.yaml config file")
   .action(async (options: { config: string }) => {

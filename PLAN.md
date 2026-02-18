@@ -1192,3 +1192,159 @@ Business Source License 1.1 (BUSL-1.1)
 19. ☐ All eval scripts exit 0
 
 ---
+
+## 16. Iteration 9 — Add Curl MCP Server + Unified Prompt (AI Chooses Tools)
+
+### 16.1 Current State
+
+After iteration 8, `TestType` was fully removed from the codebase. The YAML
+config is clean (no `type` field). However, the MCP client **still only
+connects to Playwright** and the agent prompt **still only mentions browser
+tools**. The curl MCP server was never actually added.
+
+This iteration completes the vision: give the AI agent access to BOTH
+Playwright (browser) and curl (API) tools simultaneously, and let it choose.
+
+### 16.2 What Changes
+
+**Only 3 source files change. No config/runner/executor/cache changes.**
+
+#### A. MCP Client (`src/agent/mcp-client.ts`)
+
+Change `buildMcpServerConfig` to return **both** servers and generalize
+the `McpServerConfig` type:
+
+```typescript
+export interface McpServerConfig {
+  mcpServers: Record<string, McpServerEntry>;
+}
+
+export function buildMcpServerConfig(config: Config): McpServerConfig {
+  const browserArgs = ["-y", "@playwright/mcp@latest"];
+  if (config.headless) browserArgs.push("--headless");
+  browserArgs.push(`--browser=${config.browser}`);
+
+  return {
+    mcpServers: {
+      playwright: {
+        transport: "stdio" as const,
+        command: "npx",
+        args: browserArgs,
+      },
+      curl: {
+        transport: "stdio" as const,
+        command: "npx",
+        args: ["-y", "@mcp-get-community/server-curl"],
+      },
+    },
+  };
+}
+```
+
+The `McpServerConfig` type changes from `{ playwright: McpServerEntry }` to
+`Record<string, McpServerEntry>` since it now holds both playwright and curl.
+
+#### B. Agent Factory (`src/agent/agent-factory.ts`)
+
+Update `buildSystemPrompt` to mention both tool types:
+
+```typescript
+static buildSystemPrompt(testCase: string, baseUrl: string): string {
+  return [
+    "You are a QA automation agent. Your job is to execute the following",
+    "test case and determine if it passes or fails.",
+    "",
+    `Test case: "${testCase}"`,
+    `Base URL: "${baseUrl}"`,
+    "",
+    "You have access to two types of tools:",
+    "- **Browser tools** (browser_navigate, browser_click, browser_type,",
+    "  browser_snapshot, etc.) for UI/browser-based testing",
+    "- **API tools** (curl) for HTTP/REST API testing",
+    "",
+    "Choose whichever tools are appropriate for the test case.",
+    "You may use both browser and API tools in the same test.",
+    "",
+    "Instructions:",
+    "1. Analyze the test case to determine the right approach.",
+    "2. Execute the test using the appropriate tools.",
+    "3. After completing the test, respond with EXACTLY one of:",
+    '   - "TEST_PASSED: <brief explanation>"',
+    '   - "TEST_FAILED: <brief explanation of what went wrong>"',
+    "",
+    "Be methodical. For browser tests, use browser_snapshot to understand",
+    "page state. For API tests, check status codes and response bodies.",
+    "If something doesn't work, try alternative approaches before failing.",
+  ].join("\n");
+}
+```
+
+#### C. CLI description (`src/cli.ts`)
+
+Update the description from "browser test automation" to "browser and API
+test automation":
+
+```typescript
+.description("AI-powered end-to-end browser and API test automation")
+```
+
+### 16.3 Documentation Updates
+
+- **README.md**: Add API test examples to the YAML and comparison table.
+  Mention curl alongside Playwright. Add "API tools" row to tech stack.
+- **docs/how-it-works.md**: Update architecture to mention both MCP servers.
+  Add section on how AI auto-selects tools. Update step recording example
+  to include a curl step.
+- **docs/configuration.md**: Add note that the `case` description determines
+  whether browser or API tools are used — no configuration needed.
+
+### 16.4 Test Changes
+
+Tests that need updating:
+
+**`tests/unit/agent/mcp-client.test.ts`** — currently tests only Playwright.
+Add tests:
+- "config includes both playwright and curl servers"
+- "curl server uses @mcp-get-community/server-curl"
+- Update existing structure test to check both servers
+
+Access pattern on the test: since `McpServerConfig.mcpServers` is now
+`Record<string, McpServerEntry>`, existing tests that do
+`config.mcpServers.playwright` will continue to work. New tests check
+`config.mcpServers.curl` exists too.
+
+**`tests/unit/agent/agent-factory.test.ts`** — update prompt test:
+- Unified prompt mentions "curl" and "Browser tools" and "API tools"
+- Still contains "TEST_PASSED" and "TEST_FAILED"
+
+**No changes to:** schema, loader, cache, step-recorder, step-replayer,
+runner, executor, reporter, output tests. The config YAML doesn't change.
+The cache format doesn't change. The runner/executor APIs don't change.
+
+### 16.5 Execution Checklist
+
+1. ☐ `src/agent/mcp-client.ts` — generalize McpServerConfig, add curl server
+2. ☐ `src/agent/agent-factory.ts` — unified prompt mentioning both tool types
+3. ☐ `src/cli.ts` — update description to "browser and API"
+4. ☐ `tests/unit/agent/mcp-client.test.ts` — add curl server tests
+5. ☐ `tests/unit/agent/agent-factory.test.ts` — update prompt assertions
+6. ☐ `README.md` — add API examples, update comparison table, tech stack
+7. ☐ `docs/how-it-works.md` — dual MCP architecture, AI tool selection
+8. ☐ `docs/configuration.md` — note about AI auto-selection
+9. ☐ `bun test` → all pass, 0 failures
+10. ☐ `bun run tsc --noEmit` → 0 errors
+11. ☐ All eval scripts exit 0
+
+### 16.6 What Does NOT Change
+
+- `src/config/schema.ts` — no `type` field, YAML stays the same
+- `src/config/types.ts` — no TestType
+- `src/cache/*` — cache format unchanged, key unchanged
+- `src/runner/*` — runner/executor APIs unchanged
+- `src/output/*` — reporter unchanged
+- `tests/unit/config/*` — schema tests unchanged
+- `tests/unit/cache/*` — cache tests unchanged
+- `tests/unit/runner/*` — runner tests unchanged
+- `tests/integration/*` — integration tests unchanged
+
+---
