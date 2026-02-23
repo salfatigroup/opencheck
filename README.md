@@ -63,7 +63,7 @@ This is what makes OpenCheck a **testing framework** rather than a demo tool.
 ### Install
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/salfatigroup/opencheck
 cd opencheck
 bun install
 ```
