@@ -6,10 +6,12 @@
 opencheck --config <path>
 ```
 
-Or run directly with Bun:
+Or run without installing:
 
 ```bash
-bun run src/cli.ts --config tests.yaml
+npx opencheck --config tests.yaml
+# or
+bunx opencheck --config tests.yaml
 ```
 
 ## Options

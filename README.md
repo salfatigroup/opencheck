@@ -62,10 +62,20 @@ This is what makes OpenCheck a **testing framework** rather than a demo tool.
 
 ### Install
 
+Run directly with no install:
+
 ```bash
-git clone https://github.com/salfatigroup/opencheck
-cd opencheck
-bun install
+npx opencheck --config tests.yaml
+# or
+bunx opencheck --config tests.yaml
+```
+
+Or install globally:
+
+```bash
+npm install -g opencheck
+# or
+bun install -g opencheck
 ```
 
 ### Configure
@@ -83,7 +93,7 @@ tests:
 
 ```bash
 # Make sure your app is running at baseUrl
-bun run src/cli.ts --config tests.yaml
+opencheck --config tests.yaml
 ```
 
 ### What happens
