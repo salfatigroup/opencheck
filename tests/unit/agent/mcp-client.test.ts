@@ -10,6 +10,7 @@ describe("buildMcpServerConfig", () => {
     timeout: 60000,
     maxAttempts: 3,
     cacheDir: ".opencheck-cache",
+    provider: "anthropic",
     model: "claude-sonnet-4-5-20250929",
     tests: [{ case: "check login" }],
   };

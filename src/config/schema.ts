@@ -15,6 +15,8 @@ export const ConfigSchema = z.object({
   timeout: z.number().positive().default(60_000),
   maxAttempts: z.number().int().positive().max(10).default(3),
   cacheDir: z.string().default(".opencheck-cache"),
+  provider: z.enum(["anthropic", "bedrock"]).default("anthropic"),
+  region: z.string().optional(),
   model: z.string().default("claude-sonnet-4-5-20250929"),
   tests: z.array(TestCaseSchema).min(1, "At least one test case is required"),
 });

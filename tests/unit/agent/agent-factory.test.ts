@@ -25,11 +25,11 @@ vi.mock("@langchain/mcp-adapters", () => {
   };
 });
 
-vi.mock("@langchain/anthropic", () => {
+vi.mock("../../../src/agent/model-factory.ts", () => {
   return {
-    ChatAnthropic: class MockChatAnthropic {
+    createChatModel: vi.fn().mockReturnValue({
       bindTools() { return this; }
-    },
+    }),
   };
 });
 
@@ -53,6 +53,7 @@ describe("AgentFactory", () => {
     timeout: 60000,
     maxAttempts: 3,
     cacheDir: ".opencheck-cache",
+    provider: "anthropic",
     model: "claude-sonnet-4-5-20250929",
     tests: [{ case: "check login is working" }],
   };

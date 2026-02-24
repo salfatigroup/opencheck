@@ -71,8 +71,29 @@ describe("ConfigSchema", () => {
       expect(result.data.timeout).toBe(60000);
       expect(result.data.maxAttempts).toBe(3);
       expect(result.data.cacheDir).toBe(".opencheck-cache");
+      expect(result.data.provider).toBe("anthropic");
       expect(result.data.model).toBe("claude-sonnet-4-5-20250929");
     }
+  });
+
+  it("accepts bedrock as a valid provider", () => {
+    const result = ConfigSchema.safeParse({
+      provider: "bedrock",
+      model: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+      tests: [{ case: "test" }],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.provider).toBe("bedrock");
+    }
+  });
+
+  it("rejects invalid provider value", () => {
+    const result = ConfigSchema.safeParse({
+      provider: "openai",
+      tests: [{ case: "test" }],
+    });
+    expect(result.success).toBe(false);
   });
 
   it("rejects config with empty tests array", () => {

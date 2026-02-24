@@ -11,6 +11,7 @@ export type { CacheEntry, CachedStep } from "./cache/types.ts";
 
 export { AgentFactory } from "./agent/agent-factory.ts";
 export { buildMcpServerConfig, createMcpClient } from "./agent/mcp-client.ts";
+export { createChatModel } from "./agent/model-factory.ts";
 export type { McpServerConfig } from "./agent/mcp-client.ts";
 export type { AgentExecutionResult } from "./agent/types.ts";
 

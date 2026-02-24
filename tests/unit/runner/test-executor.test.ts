@@ -25,6 +25,7 @@ describe("TestExecutor", () => {
       timeout: 60000,
       maxAttempts: 3,
       cacheDir: tempDir,
+      provider: "anthropic",
       model: "claude-sonnet-4-5-20250929",
       tests: [{ case: "check login" }],
     };

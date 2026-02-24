@@ -26,6 +26,7 @@ describe("CLI Pipeline (integration)", () => {
       timeout: 60000,
       maxAttempts: 2,
       cacheDir: tempDir,
+      provider: "anthropic",
       model: "claude-sonnet-4-5-20250929",
       tests: [
         { case: "check login" },

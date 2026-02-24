@@ -25,6 +25,7 @@ describe("Config Loading (integration)", () => {
     expect(config.timeout).toBe(60000);
     expect(config.maxAttempts).toBe(3);
     expect(config.cacheDir).toBe(".opencheck-cache");
+    expect(config.provider).toBe("anthropic");
     expect(config.model).toBe("claude-sonnet-4-5-20250929");
     expect(config.tests).toHaveLength(1);
     expect(config.tests[0]?.case).toBe("basic smoke test");
