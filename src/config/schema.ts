@@ -16,5 +16,6 @@ export const ConfigSchema = z.object({
   maxAttempts: z.number().int().positive().max(10).default(3),
   cacheDir: z.string().default(".opencheck-cache"),
   model: z.string().default("claude-sonnet-4-5-20250929"),
+  modelProvider: z.string().optional(),
   tests: z.array(TestCaseSchema).min(1, "At least one test case is required"),
 });

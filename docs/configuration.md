@@ -16,6 +16,7 @@ timeout: 60000
 maxAttempts: 3
 cacheDir: ".opencheck-cache"
 model: "claude-sonnet-4-5-20250929"
+modelProvider: "anthropic"  # optional — auto-inferred for most models
 tests:
   - case: "check login is working"
   - case: "verify dashboard loads after login"
@@ -37,6 +38,7 @@ tests:
 | `maxAttempts` | `number` (1-10) | `3` | Max AI retry attempts per test before marking as failed. |
 | `cacheDir` | `string` | `".opencheck-cache"` | Directory for cached step recordings. |
 | `model` | `string` | `"claude-sonnet-4-5-20250929"` | LLM model identifier for the AI agent. |
+| `modelProvider` | `string` | _(auto-inferred)_ | LangChain provider name. Required for Bedrock; auto-inferred for Anthropic, OpenAI, etc. See [Providers](../README.md#providers). |
 | `tests` | `TestCase[]` | _(required)_ | Array of test cases. Must have at least one entry. |
 
 ### Test Case Fields
