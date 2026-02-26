@@ -1,8 +1,8 @@
 import { MultiServerMCPClient } from "@langchain/mcp-adapters";
-import { ChatAnthropic } from "@langchain/anthropic";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { StepRecorder } from "../cache/step-recorder.ts";
 import { buildMcpServerConfig } from "./mcp-client.ts";
+import { createChatModel } from "./model-factory.ts";
 import type { Config } from "../config/types.ts";
 import type { AgentExecutionResult } from "./types.ts";
 
@@ -76,7 +76,7 @@ export class AgentFactory {
         return { ...tool, invoke: wrappedInvoke };
       });
 
-      const model = new ChatAnthropic({ model: this.config.model });
+      const model = await createChatModel(this.config);
       const systemPrompt = AgentFactory.buildSystemPrompt(testCase, baseUrl);
       const agent = createReactAgent({
         llm: model,

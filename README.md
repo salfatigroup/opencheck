@@ -57,7 +57,7 @@ This is what makes OpenCheck a **testing framework** rather than a demo tool.
 ### Prerequisites
 
 - [Bun](https://bun.sh) v1.0+
-- An `ANTHROPIC_API_KEY` environment variable
+- An LLM provider configured (see [Providers](#providers) below)
 - Node.js 18+ (for Playwright MCP)
 
 ### Install
@@ -114,6 +114,70 @@ opencheck --config tests.yaml
 - [Cache System](docs/cache.md) — How step caching works
 - [CLI Reference](docs/cli.md) — Flags, exit codes, environment variables
 
+## Providers
+
+OpenCheck supports multiple LLM providers via LangChain's universal model interface. Set the `model` and optionally `modelProvider` in your `tests.yaml`.
+
+### Anthropic (default)
+
+No extra config needed — provider is auto-inferred from the model name.
+
+```yaml
+model: "claude-sonnet-4-5-20250929"
+tests:
+  - case: "check login is working"
+```
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+opencheck --config tests.yaml
+```
+
+### AWS Bedrock
+
+Requires `@langchain/aws` and AWS credentials.
+
+```bash
+bun add @langchain/aws
+```
+
+```yaml
+model: "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+modelProvider: "bedrock"
+tests:
+  - case: "check login is working"
+```
+
+```bash
+# Standard AWS credential chain (env vars, ~/.aws/credentials, IAM role, etc.)
+export AWS_DEFAULT_REGION="us-east-1"
+opencheck --config tests.yaml
+```
+
+### Google Vertex AI
+
+Requires `@langchain/google-vertexai` and GCP credentials.
+
+```bash
+bun add @langchain/google-vertexai
+```
+
+```yaml
+model: "gemini-1.5-pro"
+modelProvider: "google-vertexai"
+tests:
+  - case: "check login is working"
+```
+
+```bash
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
+opencheck --config tests.yaml
+```
+
+### Other Providers
+
+Any provider supported by [LangChain's initChatModel](https://js.langchain.com/docs/how_to/chat_models_universal_init/) works. Install the provider package and set `modelProvider` accordingly (e.g., `openai`, `fireworks`, `mistralai`).
+
 ## Tech Stack
 
 | Component | Technology |
@@ -121,7 +185,7 @@ opencheck --config tests.yaml
 | Runtime | Bun |
 | Language | TypeScript (strict mode) |
 | AI Agent | LangChain + LangGraph |
-| LLM | Claude (via @langchain/anthropic) |
+| LLM | Multi-provider via LangChain (Anthropic, Bedrock, Vertex AI, and more) |
 | Browser | Playwright MCP (@playwright/mcp) |
 | API | curl MCP (@mcp-get-community/server-curl) |
 | Config | Zod + YAML |

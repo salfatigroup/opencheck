@@ -126,4 +126,38 @@ describe("ConfigSchema", () => {
       expect(result.success).toBe(true);
     }
   });
+
+  it("accepts modelProvider as an optional string", () => {
+    const result = ConfigSchema.safeParse({
+      modelProvider: "bedrock",
+      tests: [{ case: "test" }],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.modelProvider).toBe("bedrock");
+    }
+  });
+
+  it("defaults modelProvider to undefined when omitted", () => {
+    const result = ConfigSchema.safeParse({
+      tests: [{ case: "test" }],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.modelProvider).toBeUndefined();
+    }
+  });
+
+  it("accepts any string as modelProvider value", () => {
+    for (const provider of ["anthropic", "google-vertexai", "openai", "custom-provider"]) {
+      const result = ConfigSchema.safeParse({
+        modelProvider: provider,
+        tests: [{ case: "test" }],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.modelProvider).toBe(provider);
+      }
+    }
+  });
 });

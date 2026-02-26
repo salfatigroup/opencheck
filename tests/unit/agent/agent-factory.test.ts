@@ -2,42 +2,23 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { AgentFactory } from "../../../src/agent/agent-factory.ts";
 import type { Config } from "../../../src/config/types.ts";
 
-const mockGetTools = vi.fn().mockResolvedValue([
-  {
-    name: "browser_navigate",
-    description: "Navigate to URL",
-    invoke: vi.fn().mockResolvedValue("Navigated to page"),
+const { mockGetTools, mockClose, mockCreateChatModel, mockAgentInvoke } = vi.hoisted(() => ({
+  mockGetTools: vi.fn(),
+  mockClose: vi.fn(),
+  mockCreateChatModel: vi.fn(),
+  mockAgentInvoke: vi.fn(),
+}));
+
+vi.mock("@langchain/mcp-adapters", () => ({
+  MultiServerMCPClient: class MockMCPClient {
+    getTools = mockGetTools;
+    close = mockClose;
   },
-  {
-    name: "browser_click",
-    description: "Click element",
-    invoke: vi.fn().mockResolvedValue("Clicked element"),
-  },
-]);
-const mockClose = vi.fn().mockResolvedValue(undefined);
+}));
 
-vi.mock("@langchain/mcp-adapters", () => {
-  return {
-    MultiServerMCPClient: class MockMCPClient {
-      getTools = mockGetTools;
-      close = mockClose;
-    },
-  };
-});
-
-vi.mock("@langchain/anthropic", () => {
-  return {
-    ChatAnthropic: class MockChatAnthropic {
-      bindTools() { return this; }
-    },
-  };
-});
-
-const mockAgentInvoke = vi.fn().mockResolvedValue({
-  messages: [
-    { content: "TEST_PASSED: Login form is visible and working" },
-  ],
-});
+vi.mock("../../../src/agent/model-factory.ts", () => ({
+  createChatModel: mockCreateChatModel,
+}));
 
 vi.mock("@langchain/langgraph/prebuilt", () => ({
   createReactAgent: vi.fn().mockImplementation(() => ({
@@ -72,6 +53,9 @@ describe("AgentFactory", () => {
       },
     ]);
     mockClose.mockResolvedValue(undefined);
+    mockCreateChatModel.mockResolvedValue({
+      bindTools() { return this; },
+    });
     mockAgentInvoke.mockResolvedValue({
       messages: [
         { content: "TEST_PASSED: Login form is visible and working" },
@@ -102,6 +86,12 @@ describe("AgentFactory", () => {
     expect(result.passed).toBe(true);
     expect(result.message).toContain("TEST_PASSED");
     expect(Array.isArray(result.steps)).toBe(true);
+  });
+
+  it("uses createChatModel to instantiate the model", async () => {
+    const factory = new AgentFactory(baseConfig);
+    await factory.executeTest("check login is working", "http://localhost:3000");
+    expect(mockCreateChatModel).toHaveBeenCalledWith(baseConfig);
   });
 
   it("cleans up MCP client after execution", async () => {

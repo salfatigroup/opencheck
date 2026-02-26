@@ -35,5 +35,9 @@
     "langchain": "^1.2.24",
     "yaml": "^2.8.2",
     "zod": "^4.3.6"
+  },
+  "optionalDependencies": {
+    "@langchain/aws": "^1.2.5",
+    "@langchain/google-vertexai": "^2.1.20"
   }
 }
