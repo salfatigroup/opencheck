@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { mock } from "bun:test";
 import type { Config } from "../../../src/config/types.ts";
 
 const mockInitChatModel = vi.fn().mockResolvedValue({
@@ -6,12 +7,14 @@ const mockInitChatModel = vi.fn().mockResolvedValue({
   invoke: vi.fn(),
 });
 
-vi.mock("langchain/chat_models/universal", () => ({
-  initChatModel: mockInitChatModel,
+mock.module("langchain/chat_models/universal", () => ({
+  initChatModel: (...args: unknown[]) => mockInitChatModel(...args),
 }));
 
-// Import after mock setup so the mock takes effect
-const { createChatModel } = await import("../../../src/agent/model-factory.ts");
+// Dynamic import with cache-bust query to get a fresh module instance.
+// This avoids conflicts with agent-factory.test.ts which mocks model-factory.ts.
+// @ts-expect-error — query parameter is a Bun cache-bust; TS can't resolve it
+const { createChatModel } = await import("../../../src/agent/model-factory.ts?test");
 
 describe("createChatModel", () => {
   const baseConfig: Config = {
