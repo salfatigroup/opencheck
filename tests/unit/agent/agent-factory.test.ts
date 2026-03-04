@@ -56,6 +56,7 @@ describe("AgentFactory", () => {
     maxAttempts: 3,
     cacheDir: ".opencheck-cache",
     model: "claude-sonnet-4-5-20250929",
+    recursionLimit: 500,
     tests: [{ case: "check login is working" }],
   };
 
@@ -110,6 +111,47 @@ describe("AgentFactory", () => {
     const result = await factory.executeTest("check login is working", "http://localhost:3000");
     // Verify execution completed successfully (close is called in finally block)
     expect(result.passed).toBe(true);
+  });
+
+  it("forwards recursionLimit from config to agent.invoke()", async () => {
+    const configWithLimit: Config = {
+      ...baseConfig,
+      recursionLimit: 750,
+    };
+
+    let capturedConfig: Record<string, unknown> | undefined;
+    (createReactAgent as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
+      invoke: vi.fn().mockImplementation((_input: unknown, config?: Record<string, unknown>) => {
+        capturedConfig = config;
+        return Promise.resolve({
+          messages: [{ content: "TEST_PASSED: OK" }],
+        });
+      }),
+    }));
+
+    const factory = new AgentFactory(configWithLimit);
+    await factory.executeTest("check login", "http://localhost:3000");
+
+    expect(capturedConfig).toBeDefined();
+    expect(capturedConfig).toHaveProperty("recursionLimit", 750);
+  });
+
+  it("uses default recursionLimit of 500 when not specified in config", async () => {
+    let capturedConfig: Record<string, unknown> | undefined;
+    (createReactAgent as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
+      invoke: vi.fn().mockImplementation((_input: unknown, config?: Record<string, unknown>) => {
+        capturedConfig = config;
+        return Promise.resolve({
+          messages: [{ content: "TEST_PASSED: OK" }],
+        });
+      }),
+    }));
+
+    const factory = new AgentFactory(baseConfig);
+    await factory.executeTest("check login", "http://localhost:3000");
+
+    expect(capturedConfig).toBeDefined();
+    expect(capturedConfig).toHaveProperty("recursionLimit");
   });
 
   it("detects TEST_FAILED in agent response", async () => {

@@ -84,9 +84,12 @@ export class AgentFactory {
         prompt: systemPrompt,
       });
 
-      const result = await agent.invoke({
-        messages: [{ role: "user", content: `Execute the test case: "${testCase}"` }],
-      });
+      const result = await agent.invoke(
+        {
+          messages: [{ role: "user", content: `Execute the test case: "${testCase}"` }],
+        },
+        { recursionLimit: this.config.recursionLimit },
+      );
 
       const lastMessage = extractLastMessage(result);
       const passed = lastMessage.includes("TEST_PASSED");

@@ -72,6 +72,7 @@ describe("ConfigSchema", () => {
       expect(result.data.maxAttempts).toBe(3);
       expect(result.data.cacheDir).toBe(".opencheck-cache");
       expect(result.data.model).toBe("claude-sonnet-4-5-20250929");
+      expect(result.data.recursionLimit).toBe(500);
     }
   });
 
@@ -159,5 +160,50 @@ describe("ConfigSchema", () => {
         expect(result.data.modelProvider).toBe(provider);
       }
     }
+  });
+
+  it("defaults recursionLimit to 500 when omitted", () => {
+    const result = ConfigSchema.safeParse({
+      tests: [{ case: "test" }],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.recursionLimit).toBe(500);
+    }
+  });
+
+  it("accepts a custom recursionLimit value", () => {
+    const result = ConfigSchema.safeParse({
+      recursionLimit: 1000,
+      tests: [{ case: "test" }],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.recursionLimit).toBe(1000);
+    }
+  });
+
+  it("rejects zero recursionLimit", () => {
+    const result = ConfigSchema.safeParse({
+      recursionLimit: 0,
+      tests: [{ case: "test" }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects negative recursionLimit", () => {
+    const result = ConfigSchema.safeParse({
+      recursionLimit: -10,
+      tests: [{ case: "test" }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects non-integer recursionLimit", () => {
+    const result = ConfigSchema.safeParse({
+      recursionLimit: 100.5,
+      tests: [{ case: "test" }],
+    });
+    expect(result.success).toBe(false);
   });
 });
