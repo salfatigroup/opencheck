@@ -21,6 +21,7 @@ describe("createChatModel", () => {
     maxAttempts: 3,
     cacheDir: ".opencheck-cache",
     model: "claude-sonnet-4-5-20250929",
+    recursionLimit: 500,
     tests: [{ case: "test" }],
   };
 

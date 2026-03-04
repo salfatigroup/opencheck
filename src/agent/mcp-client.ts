@@ -21,7 +21,15 @@ export interface McpServerConfig {
  * @param config - The OpenCheck configuration
  */
 export function buildMcpServerConfig(config: Config): McpServerConfig {
-  const playwrightArgs = ["-y", "@playwright/mcp@latest"];
+  const playwrightCliPath = resolvePlaywrightMcp();
+  const playwrightArgs: string[] = [];
+
+  if (playwrightCliPath) {
+    playwrightArgs.push(playwrightCliPath);
+  } else {
+    // Fallback to npx
+    playwrightArgs.push("-y", "@playwright/mcp@latest");
+  }
 
   if (config.headless) {
     playwrightArgs.push("--headless");
@@ -29,20 +37,37 @@ export function buildMcpServerConfig(config: Config): McpServerConfig {
 
   playwrightArgs.push(`--browser=${config.browser}`);
 
+  const command = playwrightCliPath ? "node" : "npx";
+
   return {
     mcpServers: {
       playwright: {
         transport: "stdio" as const,
-        command: "npx",
+        command,
         args: playwrightArgs,
-      },
-      curl: {
-        transport: "stdio" as const,
-        command: "npx",
-        args: ["-y", "@mcp-get-community/server-curl"],
       },
     },
   };
+}
+
+/** Resolve the Playwright MCP CLI path from npx cache or node_modules */
+function resolvePlaywrightMcp(): string | null {
+  const { existsSync } = require("node:fs");
+  const { join } = require("node:path");
+  const { execSync } = require("node:child_process");
+
+  // Check npx cache
+  const npxCachePath = join(
+    process.env.HOME ?? "",
+    ".npm/_npx/9833c18b2d85bc59/node_modules/@playwright/mcp/cli.js",
+  );
+  if (existsSync(npxCachePath)) return npxCachePath;
+
+  // Check local node_modules
+  const localPath = join(process.cwd(), "node_modules/@playwright/mcp/cli.js");
+  if (existsSync(localPath)) return localPath;
+
+  return null;
 }
 
 /**

@@ -11,6 +11,7 @@ describe("buildMcpServerConfig", () => {
     maxAttempts: 3,
     cacheDir: ".opencheck-cache",
     model: "claude-sonnet-4-5-20250929",
+    recursionLimit: 500,
     tests: [{ case: "check login" }],
   };
 
@@ -19,7 +20,8 @@ describe("buildMcpServerConfig", () => {
     expect(config).toHaveProperty("mcpServers");
     expect(config.mcpServers).toHaveProperty("playwright");
     expect(config.mcpServers["playwright"]!.transport).toBe("stdio");
-    expect(config.mcpServers["playwright"]!.command).toBe("npx");
+    // Command is "node" when Playwright MCP CLI resolves locally, "npx" otherwise
+    expect(["npx", "node"]).toContain(config.mcpServers["playwright"]!.command);
   });
 
   it("includes headless flag when config.headless is true", () => {
@@ -42,23 +44,10 @@ describe("buildMcpServerConfig", () => {
     expect(config.mcpServers["playwright"]!.args).toContain("--browser=firefox");
   });
 
-  it("includes curl server for API testing", () => {
-    const config = buildMcpServerConfig(baseConfig);
-    expect(config.mcpServers).toHaveProperty("curl");
-    expect(config.mcpServers["curl"]!.transport).toBe("stdio");
-    expect(config.mcpServers["curl"]!.command).toBe("npx");
-  });
-
-  it("curl server uses correct package", () => {
-    const config = buildMcpServerConfig(baseConfig);
-    expect(config.mcpServers["curl"]!.args).toContain("@mcp-get-community/server-curl");
-  });
-
-  it("includes both playwright and curl servers simultaneously", () => {
+  it("returns only the playwright server", () => {
     const config = buildMcpServerConfig(baseConfig);
     const serverNames = Object.keys(config.mcpServers);
     expect(serverNames).toContain("playwright");
-    expect(serverNames).toContain("curl");
-    expect(serverNames).toHaveLength(2);
+    expect(serverNames).toHaveLength(1);
   });
 });
