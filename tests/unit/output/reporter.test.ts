@@ -93,8 +93,11 @@ describe("ConsoleReporter", () => {
   });
 
   it("does not display error details for passing tests", () => {
+    const callsBefore = consoleSpy.mock.calls.length;
     reporter.onTestComplete("check login", "passed", "cache", 150);
-    expect(consoleSpy).toHaveBeenCalledTimes(1);
+    const newCalls = consoleSpy.mock.calls.slice(callsBefore);
+    expect(newCalls).toHaveLength(1);
+    expect(String(newCalls[0])).toContain("PASS");
   });
 
   it("shows troubleshooting tips when tests fail", () => {
