@@ -7,6 +7,7 @@ import { TestExecutor } from "./runner/test-executor.ts";
 import { TestRunner } from "./runner/test-runner.ts";
 import { ConsoleReporter } from "./output/reporter.ts";
 import { StepReplayer } from "./cache/step-replayer.ts";
+import { generateFailureSummary } from "./output/failure-summary.ts";
 
 const program = new Command();
 
@@ -51,6 +52,20 @@ program
       console.log(`Running ${config.tests.length} test(s)...\n`);
 
       const runResult = await runner.run();
+
+      if (runResult.failed > 0) {
+        const failed = runResult.results.filter((r) => r.status === "failed");
+        const summary = await generateFailureSummary(failed, config);
+        if (summary) {
+          console.log("");
+          console.log("━".repeat(50));
+          console.log("  Failure Analysis");
+          console.log("━".repeat(50));
+          console.log(`  ${summary.split("\n").join("\n  ")}`);
+          console.log("━".repeat(50));
+        }
+      }
+
       process.exit(runResult.failed > 0 ? 1 : 0);
     } catch (error) {
       if (error instanceof ConfigLoadError) {
