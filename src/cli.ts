@@ -72,7 +72,18 @@ program
         console.error(`Error: ${error.message}`);
         process.exit(1);
       }
-      throw error;
+      const errorName = error instanceof Error ? error.constructor.name : "UnknownError";
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("");
+      console.error("━".repeat(50));
+      console.error(`  OpenCheck encountered an unexpected error`);
+      console.error("━".repeat(50));
+      console.error(`  ${errorName}: ${errorMessage}`);
+      console.error("");
+      console.error("  This is likely a bug in OpenCheck or a misconfigured environment.");
+      console.error("  Please check your config file and environment variables, then retry.");
+      console.error("━".repeat(50));
+      process.exit(1);
     }
   });
 
