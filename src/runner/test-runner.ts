@@ -29,7 +29,20 @@ export class TestRunner {
       const baseUrl = test.baseUrl ?? this.config.baseUrl ?? "";
       this.reporter.onTestStart(test.case);
 
-      const result = await this.executeFn(test.case, baseUrl);
+      let result: TestResult;
+      try {
+        result = await this.executeFn(test.case, baseUrl);
+      } catch (error) {
+        const errorName = error instanceof Error ? error.constructor.name : "UnknownError";
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        result = {
+          testCase: test.case,
+          status: "failed",
+          source: "ai",
+          durationMs: Date.now() - startTime,
+          error: `Unexpected error (${errorName}): ${errorMessage}`,
+        };
+      }
       results.push(result);
 
       this.reporter.onTestComplete(
@@ -37,6 +50,7 @@ export class TestRunner {
         result.status,
         result.source,
         result.durationMs,
+        result.error,
       );
     }
 

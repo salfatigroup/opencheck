@@ -160,4 +160,42 @@ describe("TestRunner", () => {
 
     expect(runResult.totalDurationMs).toBeGreaterThanOrEqual(0);
   });
+
+  it("catches thrown errors and marks test as failed instead of crashing", async () => {
+    mockExecute
+      .mockRejectedValueOnce(new Error("MCP server crashed"))
+      .mockResolvedValueOnce({
+        testCase: "check dashboard",
+        status: "passed",
+        source: "ai",
+        durationMs: 200,
+      });
+
+    const runner = new TestRunner(config, mockReporter, mockExecute);
+    const runResult = await runner.run();
+
+    expect(runResult.results).toHaveLength(2);
+    expect(runResult.failed).toBe(1);
+    expect(runResult.passed).toBe(1);
+    expect(runResult.results[0]?.status).toBe("failed");
+    expect(runResult.results[0]?.error).toContain("MCP server crashed");
+    expect(runResult.results[1]?.status).toBe("passed");
+  });
+
+  it("continues running subsequent tests after one throws an error", async () => {
+    mockExecute
+      .mockRejectedValueOnce(new Error("Crash"))
+      .mockResolvedValueOnce({
+        testCase: "check dashboard",
+        status: "passed",
+        source: "ai",
+        durationMs: 100,
+      });
+
+    const runner = new TestRunner(config, mockReporter, mockExecute);
+    await runner.run();
+
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+    expect(mockReporter.onTestComplete).toHaveBeenCalledTimes(2);
+  });
 });
