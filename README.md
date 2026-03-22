@@ -105,9 +105,18 @@ opencheck --config tests.yaml
 
 ## Test Recordings
 
-Every test automatically saves a **Playwright trace** and **video** to `.opencheck-recordings/<test-name>/`. Traces capture DOM snapshots, screenshots, network, and console at every step — ideal for debugging failed tests (expected vs actual).
+Enable video and trace recordings of every test run with a single config line:
 
-To disable recordings, set `recording: false` in your `tests.yaml`.
+```yaml
+# tests.yaml
+baseUrl: "http://localhost:3000"
+recording: true
+tests:
+  - case: "check login is working"
+  - case: "verify dashboard loads after login"
+```
+
+When `recording: true`, each test saves a **Playwright trace** and **video** to `.opencheck-recordings/<test-name>/`. Traces capture DOM snapshots, screenshots, network, and console at every step — ideal for debugging failed tests (expected vs actual).
 
 ### Viewing Recordings
 
@@ -127,7 +136,7 @@ Open `.opencheck-recordings/<test-name>/video.webm` in any browser or media play
 
 ### CI/CD (GitHub Actions)
 
-Use the built-in reusable workflow — it runs OpenCheck, uploads recordings as artifacts, and posts results as a PR comment (updated on each re-run):
+Use the built-in reusable workflow. It runs OpenCheck, uploads recordings as artifacts, and posts results as a PR comment updated on each re-run:
 
 ```yaml
 # .github/workflows/e2e.yml
@@ -143,6 +152,8 @@ jobs:
       config: tests.yaml
     secrets: inherit
 ```
+
+Enable recordings in your `tests.yaml` with `recording: true` to upload trace and video artifacts.
 
 That's it. On each PR, you'll get:
 - A **PR comment** with the full test results summary
@@ -167,6 +178,13 @@ If you prefer not to use the reusable workflow, add these steps directly:
     retention-days: 30
 ```
 
+After the workflow completes, download the `opencheck-recordings` artifact from the GitHub Actions run summary. Extract it and view traces with:
+
+```bash
+bunx playwright show-trace trace.zip
+```
+
+Or drag `trace.zip` into [trace.playwright.dev](https://trace.playwright.dev) for browser-based viewing.
 ## Documentation
 
 - [Configuration Reference](docs/configuration.md) — All `tests.yaml` options

@@ -18,6 +18,6 @@ export const ConfigSchema = z.object({
   model: z.string().default("claude-sonnet-4-5-20250929"),
   modelProvider: z.string().optional(),
   recursionLimit: z.number().int().positive().default(500),
-  recording: z.boolean().default(true),
+  recording: z.boolean().default(false),
   tests: z.array(TestCaseSchema).min(1, "At least one test case is required"),
 });
