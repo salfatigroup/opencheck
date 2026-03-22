@@ -57,6 +57,7 @@ describe("AgentFactory", () => {
     cacheDir: ".opencheck-cache",
     model: "claude-sonnet-4-5-20250929",
     recursionLimit: 500,
+    recording: false,
     tests: [{ case: "check login is working" }],
   };
 

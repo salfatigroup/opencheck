@@ -30,6 +30,9 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # OpenCheck test step cache
 .opencheck-cache/
 
+# OpenCheck test recordings (traces + videos)
+.opencheck-recordings/
+
 # IntelliJ based IDEs
 .idea
 

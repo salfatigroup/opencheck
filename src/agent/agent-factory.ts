@@ -1,5 +1,6 @@
 import { MultiServerMCPClient } from "@langchain/mcp-adapters";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { join } from "node:path";
 import { StepRecorder } from "../cache/step-recorder.ts";
 import { buildMcpServerConfig } from "./mcp-client.ts";
 import { createChatModel } from "./model-factory.ts";
@@ -58,7 +59,10 @@ export class AgentFactory {
    * @returns AgentExecutionResult with pass/fail, steps, and message
    */
   async executeTest(testCase: string, baseUrl: string): Promise<AgentExecutionResult> {
-    const mcpConfig = buildMcpServerConfig(this.config);
+    const recordingDir = this.config.recording
+      ? join(".opencheck-recordings", sanitizeTestName(testCase))
+      : undefined;
+    const mcpConfig = buildMcpServerConfig(this.config, recordingDir);
     const client = new MultiServerMCPClient(mcpConfig);
     const recorder = new StepRecorder();
 
@@ -98,11 +102,21 @@ export class AgentFactory {
         passed,
         steps: recorder.getSteps(),
         message: lastMessage,
+        recordingDir,
       };
     } finally {
       await client.close();
     }
   }
+}
+
+/** Convert a test case description to a filesystem-safe directory name */
+function sanitizeTestName(testCase: string): string {
+  return testCase
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 100);
 }
 
 /** Extract the last AI message content from agent result */

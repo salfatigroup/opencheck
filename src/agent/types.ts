@@ -5,6 +5,7 @@ export interface AgentExecutionResult {
   passed: boolean;
   steps: CachedStep[];
   message: string;
+  recordingDir?: string;
 }
 
 /** Interface for MCP client lifecycle management */

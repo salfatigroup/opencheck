@@ -107,6 +107,63 @@ opencheck --config tests.yaml
 3. Summary printed with pass/fail/cached counts and timing
 4. Exit code `0` if all pass, `1` if any fail
 
+## Test Recordings
+
+Enable video and trace recordings of every test run with a single config line:
+
+```yaml
+# tests.yaml
+baseUrl: "http://localhost:3000"
+recording: true
+tests:
+  - case: "check login is working"
+  - case: "verify dashboard loads after login"
+```
+
+When `recording: true`, each test saves a **Playwright trace** and **video** to `.opencheck-recordings/<test-name>/`. Traces capture DOM snapshots, screenshots, network, and console at every step — ideal for debugging failed tests (expected vs actual).
+
+### Viewing Recordings
+
+**Locally:**
+
+```bash
+npx playwright show-trace .opencheck-recordings/check-login-is-working/trace.zip
+```
+
+**Online (no install):**
+
+Upload the `trace.zip` to [trace.playwright.dev](https://trace.playwright.dev).
+
+**Videos:**
+
+Open `.opencheck-recordings/<test-name>/video.webm` in any browser or media player.
+
+### CI/CD (GitHub Actions)
+
+Add the following steps to your workflow to upload recordings as downloadable artifacts:
+
+```yaml
+- name: Run OpenCheck
+  run: npx opencheck --config tests.yaml
+  continue-on-error: true
+
+- name: Upload test recordings
+  if: always()
+  uses: actions/upload-artifact@v4
+  with:
+    name: opencheck-recordings
+    path: .opencheck-recordings/
+    retention-days: 30
+```
+
+After the workflow completes, download the `opencheck-recordings` artifact from the GitHub Actions run summary. Extract it and view traces with:
+
+```bash
+npx playwright show-trace trace.zip
+```
+
+Or drag `trace.zip` into [trace.playwright.dev](https://trace.playwright.dev) for instant browser-based viewing.
+
 ## Documentation
 
 - [Configuration Reference](docs/configuration.md) — All `tests.yaml` options

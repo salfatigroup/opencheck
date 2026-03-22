@@ -19,15 +19,15 @@ export interface McpServerConfig {
  * The AI agent receives all tools and autonomously chooses which to use
  * based on the test case description.
  * @param config - The OpenCheck configuration
+ * @param outputDir - Optional per-test output directory for recordings
  */
-export function buildMcpServerConfig(config: Config): McpServerConfig {
+export function buildMcpServerConfig(config: Config, outputDir?: string): McpServerConfig {
   const playwrightCliPath = resolvePlaywrightMcp();
   const playwrightArgs: string[] = [];
 
   if (playwrightCliPath) {
     playwrightArgs.push(playwrightCliPath);
   } else {
-    // Fallback to npx
     playwrightArgs.push("-y", "@playwright/mcp@latest");
   }
 
@@ -36,6 +36,14 @@ export function buildMcpServerConfig(config: Config): McpServerConfig {
   }
 
   playwrightArgs.push(`--browser=${config.browser}`);
+
+  if (config.recording) {
+    playwrightArgs.push("--save-trace");
+    playwrightArgs.push("--save-video=1280x720");
+    if (outputDir) {
+      playwrightArgs.push("--output-dir", outputDir);
+    }
+  }
 
   const command = playwrightCliPath ? "node" : "npx";
 
