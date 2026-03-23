@@ -89,8 +89,7 @@ export class AgentFactory {
     const recordingDir = this.config.recording
       ? resolve(join(".opencheck-recordings", sanitizeTestName(testCase)))
       : undefined;
-    const mcpConfig = buildMcpServerConfig(this.config, recordingDir);
-    const mcpConfig = buildMcpServerConfig(this.config, this.runtimeOptions);
+    const mcpConfig = buildMcpServerConfig(this.config, this.runtimeOptions, recordingDir);
     const client = new MultiServerMCPClient(mcpConfig);
     const recorder = new StepRecorder();
 
@@ -141,12 +140,6 @@ export class AgentFactory {
         steps: recorder.getSteps(),
         message: lastMessage,
         recordingDir,
-      };
-    } catch (error) {
-      return {
-        passed: false,
-        steps: recorder.getSteps(),
-        message: formatAgentError(error, testCase, this.config.recursionLimit),
       };
     } catch (error) {
       return {

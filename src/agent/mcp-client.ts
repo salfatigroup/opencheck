@@ -26,11 +26,28 @@ export interface McpRuntimeOptions {
  * @param config - The OpenCheck configuration
  * @param outputDir - Optional per-test output directory for recordings
  */
-export function buildMcpServerConfig(config: Config, outputDir?: string): McpServerConfig {
 export function buildMcpServerConfig(
   config: Config,
-  runtimeOptions: McpRuntimeOptions = {},
+  outputDir?: string,
+): McpServerConfig;
+export function buildMcpServerConfig(
+  config: Config,
+  runtimeOptions?: McpRuntimeOptions,
+): McpServerConfig;
+export function buildMcpServerConfig(
+  config: Config,
+  runtimeOptions: McpRuntimeOptions,
+  outputDir?: string,
+): McpServerConfig;
+export function buildMcpServerConfig(
+  config: Config,
+  runtimeOptionsOrOutputDir: McpRuntimeOptions | string = {},
+  outputDir?: string,
 ): McpServerConfig {
+  const runtimeOptions =
+    typeof runtimeOptionsOrOutputDir === "string" ? {} : runtimeOptionsOrOutputDir;
+  const resolvedOutputDir =
+    typeof runtimeOptionsOrOutputDir === "string" ? runtimeOptionsOrOutputDir : outputDir;
   const playwrightCliPath = resolvePlaywrightMcp();
   const playwrightArgs: string[] = [];
 
@@ -55,8 +72,8 @@ export function buildMcpServerConfig(
   if (config.recording) {
     playwrightArgs.push("--save-trace");
     playwrightArgs.push("--save-video=1280x720");
-    if (outputDir) {
-      playwrightArgs.push("--output-dir", outputDir);
+    if (resolvedOutputDir) {
+      playwrightArgs.push("--output-dir", resolvedOutputDir);
     }
   }
 
