@@ -21,3 +21,22 @@ jobs:
 
       - name: Run tests
         run: bun run test
+
+      - name: Verify CLI --help
+        run: bun run src/cli.ts --help
+
+      - name: Verify CLI --version
+        run: bun run src/cli.ts --version
+
+      - name: Verify CLI --validate with valid configs
+        run: |
+          bun run src/cli.ts --config tests/fixtures/minimal-config.yaml --validate
+          bun run src/cli.ts --config tests/fixtures/valid-config.yaml --validate
+
+      - name: Verify CLI rejects invalid input
+        run: |
+          set +e
+          bun run src/cli.ts --config nonexistent.yaml 2>&1
+          [ $? -ne 0 ] || { echo "Expected non-zero exit for missing config"; exit 1; }
+          bun run src/cli.ts --config tests/fixtures/invalid-config.yaml 2>&1
+          [ $? -ne 0 ] || { echo "Expected non-zero exit for invalid config"; exit 1; }
