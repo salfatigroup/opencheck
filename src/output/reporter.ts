@@ -63,7 +63,7 @@ export class ConsoleReporter implements Reporter {
       }
       console.log("");
       console.log("  View traces:");
-      console.log("    npx playwright show-trace .opencheck-recordings/<test>/trace.zip");
+      console.log("    bunx playwright show-trace .opencheck-recordings/<test>/trace.zip");
       console.log("    or upload to: https://trace.playwright.dev");
     }
   }

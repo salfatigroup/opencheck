@@ -162,24 +162,24 @@ describe("ConfigSchema", () => {
     }
   });
 
-  it("defaults recording to false when omitted", () => {
+  it("defaults recording to true when omitted", () => {
     const result = ConfigSchema.safeParse({
-      tests: [{ case: "test" }],
-    });
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.recording).toBe(false);
-    }
-  });
-
-  it("accepts recording set to true", () => {
-    const result = ConfigSchema.safeParse({
-      recording: true,
       tests: [{ case: "test" }],
     });
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.recording).toBe(true);
+    }
+  });
+
+  it("accepts recording set to false to disable", () => {
+    const result = ConfigSchema.safeParse({
+      recording: false,
+      tests: [{ case: "test" }],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.recording).toBe(false);
     }
   });
 

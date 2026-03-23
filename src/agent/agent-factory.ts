@@ -1,6 +1,6 @@
 import { MultiServerMCPClient } from "@langchain/mcp-adapters";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { StepRecorder } from "../cache/step-recorder.ts";
 import { buildMcpServerConfig } from "./mcp-client.ts";
 import { createChatModel } from "./model-factory.ts";
@@ -60,7 +60,7 @@ export class AgentFactory {
    */
   async executeTest(testCase: string, baseUrl: string): Promise<AgentExecutionResult> {
     const recordingDir = this.config.recording
-      ? join(".opencheck-recordings", sanitizeTestName(testCase))
+      ? resolve(join(".opencheck-recordings", sanitizeTestName(testCase)))
       : undefined;
     const mcpConfig = buildMcpServerConfig(this.config, recordingDir);
     const client = new MultiServerMCPClient(mcpConfig);

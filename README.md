@@ -65,16 +65,12 @@ This is what makes OpenCheck a **testing framework** rather than a demo tool.
 Run directly with no install:
 
 ```bash
-npx opencheck --config tests.yaml
-# or
 bunx opencheck --config tests.yaml
 ```
 
 Or install globally:
 
 ```bash
-npm install -g opencheck
-# or
 bun install -g opencheck
 ```
 
@@ -109,30 +105,21 @@ opencheck --config tests.yaml
 
 ## Test Recordings
 
-Enable video and trace recordings of every test run with a single config line:
+Every test automatically saves a **Playwright trace** and **video** to `.opencheck-recordings/<test-name>/`. Traces capture DOM snapshots, screenshots, network, and console at every step — ideal for debugging failed tests (expected vs actual).
 
-```yaml
-# tests.yaml
-baseUrl: "http://localhost:3000"
-recording: true
-tests:
-  - case: "check login is working"
-  - case: "verify dashboard loads after login"
-```
-
-When `recording: true`, each test saves a **Playwright trace** and **video** to `.opencheck-recordings/<test-name>/`. Traces capture DOM snapshots, screenshots, network, and console at every step — ideal for debugging failed tests (expected vs actual).
+To disable recordings, set `recording: false` in your `tests.yaml`.
 
 ### Viewing Recordings
 
 **Locally:**
 
 ```bash
-npx playwright show-trace .opencheck-recordings/check-login-is-working/trace.zip
+bunx playwright show-trace .opencheck-recordings/check-login-is-working/trace.zip
 ```
 
 **Online (no install):**
 
-Upload the `trace.zip` to [trace.playwright.dev](https://trace.playwright.dev).
+Drag the `trace.zip` into [trace.playwright.dev](https://trace.playwright.dev).
 
 **Videos:**
 
@@ -140,11 +127,35 @@ Open `.opencheck-recordings/<test-name>/video.webm` in any browser or media play
 
 ### CI/CD (GitHub Actions)
 
-Add the following steps to your workflow to upload recordings as downloadable artifacts:
+Use the built-in reusable workflow — it runs OpenCheck, uploads recordings as artifacts, and posts results as a PR comment (updated on each re-run):
+
+```yaml
+# .github/workflows/e2e.yml
+name: E2E Tests
+
+on:
+  pull_request:
+
+jobs:
+  opencheck:
+    uses: salfatigroup/opencheck/.github/workflows/opencheck.yml@main
+    with:
+      config: tests.yaml
+    secrets: inherit
+```
+
+That's it. On each PR, you'll get:
+- A **PR comment** with the full test results summary
+- Downloadable **recording artifacts** (traces + videos) in the Actions run summary
+- A direct link to view traces at [trace.playwright.dev](https://trace.playwright.dev)
+
+#### Manual setup
+
+If you prefer not to use the reusable workflow, add these steps directly:
 
 ```yaml
 - name: Run OpenCheck
-  run: npx opencheck --config tests.yaml
+  run: bunx opencheck --config tests.yaml
   continue-on-error: true
 
 - name: Upload test recordings
@@ -155,14 +166,6 @@ Add the following steps to your workflow to upload recordings as downloadable ar
     path: .opencheck-recordings/
     retention-days: 30
 ```
-
-After the workflow completes, download the `opencheck-recordings` artifact from the GitHub Actions run summary. Extract it and view traces with:
-
-```bash
-npx playwright show-trace trace.zip
-```
-
-Or drag `trace.zip` into [trace.playwright.dev](https://trace.playwright.dev) for instant browser-based viewing.
 
 ## Documentation
 
