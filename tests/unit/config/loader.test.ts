@@ -31,6 +31,7 @@ tests:
     expect(config.tests).toHaveLength(2);
     expect(config.tests[0]?.case).toBe("check login is working");
     expect(config.browser).toBe("chromium"); // default
+    expect(config.sessionMode).toBe("isolated");
   });
 
   it("applies default values when optional fields are omitted", async () => {
@@ -45,6 +46,7 @@ tests:
     const config = await loadConfig(configPath);
     expect(config.browser).toBe("chromium");
     expect(config.headless).toBe(true);
+    expect(config.sessionMode).toBe("isolated");
     expect(config.timeout).toBe(60000);
     expect(config.maxAttempts).toBe(3);
     expect(config.cacheDir).toBe(".opencheck-cache");
@@ -88,5 +90,21 @@ tests:
     const config = await loadConfig(configPath);
     expect(config.tests[0]?.baseUrl).toBe("http://localhost:4000");
     expect(config.tests[0]?.timeout).toBe(30000);
+  });
+
+  it("loads sessionMode and optional test names when provided", async () => {
+    const configPath = join(tempDir, "tests.yaml");
+    await writeFile(
+      configPath,
+      `sessionMode: "persistent"
+tests:
+  - case: "login test"
+    name: "#login"
+`
+    );
+
+    const config = await loadConfig(configPath);
+    expect(config.sessionMode).toBe("persistent");
+    expect(config.tests[0]?.name).toBe("#login");
   });
 });
