@@ -6,6 +6,6 @@ export type ReportData = RunResult;
 /** Interface for output reporting */
 export interface Reporter {
   onTestStart(testCase: string): void;
-  onTestComplete(testCase: string, status: TestStatus, source: TestSource, durationMs: number): void;
+  onTestComplete(testCase: string, status: TestStatus, source: TestSource, durationMs: number, error?: string): void;
   onRunComplete(data: ReportData): void;
 }
