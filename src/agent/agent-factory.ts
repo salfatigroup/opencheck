@@ -1,10 +1,20 @@
 import { MultiServerMCPClient } from "@langchain/mcp-adapters";
+import { DynamicStructuredTool } from "@langchain/core/tools";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { z } from "zod";
 import { StepRecorder } from "../cache/step-recorder.ts";
+import {
+  enrichToolInputWithSnapshot,
+  extractSnapshotText,
+  normalizeToolInput,
+} from "../cache/tool-input.ts";
 import { buildMcpServerConfig } from "./mcp-client.ts";
 import { createChatModel } from "./model-factory.ts";
-import type { Config } from "../config/types.ts";
+import type { Config, TestCase } from "../config/types.ts";
 import type { AgentExecutionResult } from "./types.ts";
+import type { McpRuntimeOptions } from "./mcp-client.ts";
+
+type CreateChatModelFn = typeof createChatModel;
 
 /**
  * Factory for creating and executing LangChain agents with MCP tools.
@@ -12,9 +22,19 @@ import type { AgentExecutionResult } from "./types.ts";
  */
 export class AgentFactory {
   private readonly config: Config;
+  private readonly runtimeOptions: McpRuntimeOptions;
+  private readonly namedCaseMap: Map<string, string>;
+  private readonly createChatModelFn: CreateChatModelFn;
 
-  constructor(config: Config) {
+  constructor(
+    config: Config,
+    runtimeOptions: McpRuntimeOptions = {},
+    createChatModelFn: CreateChatModelFn = createChatModel,
+  ) {
     this.config = config;
+    this.runtimeOptions = runtimeOptions;
+    this.namedCaseMap = buildNamedCaseMap(config.tests);
+    this.createChatModelFn = createChatModelFn;
   }
 
   /**
@@ -41,10 +61,17 @@ export class AgentFactory {
       "- Use the curl tool to make HTTP requests",
       "- Check status codes, headers, and response body",
       "",
+      "Named test case references:",
+      '- If the current test case contains references like "#login" or "{login}",',
+      '  call the "opencheck_lookup_named_case" tool before taking actions.',
+      "- Use that tool to retrieve the referenced named case text.",
+      "- Combine the referenced case intent with the current test case to guide execution.",
+      "",
       "Instructions:",
       "1. Analyze the test case and decide which tools to use.",
-      "2. Execute the actions needed to verify the test case.",
-      "3. After completing the test, respond with EXACTLY one of:",
+      "2. Resolve any named test references with the lookup tool when needed.",
+      "3. Execute the actions needed to verify the test case.",
+      "4. After completing the test, respond with EXACTLY one of:",
       '   - "TEST_PASSED: <brief explanation>"',
       '   - "TEST_FAILED: <brief explanation of what went wrong>"',
       "",
@@ -58,29 +85,39 @@ export class AgentFactory {
    * @returns AgentExecutionResult with pass/fail, steps, and message
    */
   async executeTest(testCase: string, baseUrl: string): Promise<AgentExecutionResult> {
-    const mcpConfig = buildMcpServerConfig(this.config);
+    const mcpConfig = buildMcpServerConfig(this.config, this.runtimeOptions);
     const client = new MultiServerMCPClient(mcpConfig);
     const recorder = new StepRecorder();
 
     try {
-      const tools = await client.getTools();
+      const mcpTools = await client.getTools();
+      let latestSnapshotText: string | null = null;
 
       // Wrap tools with recorder to capture steps
-      const wrappedTools = tools.map((tool) => {
+      const wrappedMcpTools = mcpTools.map((tool) => {
         const originalInvoke = tool.invoke.bind(tool);
         const wrappedInvoke = async (input: Record<string, unknown>): Promise<string> => {
           const result = await originalInvoke(input);
-          recorder.record(tool.name, input);
-          return typeof result === "string" ? result : JSON.stringify(result);
+          const textResult = typeof result === "string" ? result : JSON.stringify(result);
+          const snapshotText = extractSnapshotText(textResult);
+          if (snapshotText) {
+            latestSnapshotText = snapshotText;
+          }
+          recorder.record(
+            tool.name,
+            enrichToolInputWithSnapshot(normalizeToolInput(input), latestSnapshotText),
+          );
+          return textResult;
         };
         return { ...tool, invoke: wrappedInvoke };
       });
+      const allTools = [...wrappedMcpTools, this.createNamedCaseLookupTool()];
 
-      const model = await createChatModel(this.config);
+      const model = await this.createChatModelFn(this.config);
       const systemPrompt = AgentFactory.buildSystemPrompt(testCase, baseUrl);
       const agent = createReactAgent({
         llm: model,
-        tools: wrappedTools,
+        tools: allTools,
         prompt: systemPrompt,
       });
 
@@ -103,6 +140,53 @@ export class AgentFactory {
       await client.close();
     }
   }
+
+  private createNamedCaseLookupTool(): DynamicStructuredTool {
+    return new DynamicStructuredTool({
+      name: "opencheck_lookup_named_case",
+      description:
+        "Look up a named OpenCheck test case by reference such as #login or login and return its case text.",
+      schema: z.object({
+        reference: z.string().min(1, "Reference cannot be empty"),
+      }),
+      func: async ({ reference }: { reference: string }) => {
+        const normalizedReference = normalizeNamedCaseReference(reference);
+        const caseText = this.namedCaseMap.get(normalizedReference);
+        if (!caseText) {
+          return `Named test case not found for reference "${reference}".`;
+        }
+        return caseText;
+      },
+    });
+  }
+}
+
+function buildNamedCaseMap(tests: TestCase[]): Map<string, string> {
+  const namedCaseMap = new Map<string, string>();
+  for (const test of tests) {
+    if (!test.name) continue;
+
+    const key = normalizeNamedCaseReference(test.name);
+    if (namedCaseMap.has(key)) {
+      throw new Error(`Duplicate named test case reference: ${test.name}`);
+    }
+    namedCaseMap.set(key, test.case);
+  }
+  return namedCaseMap;
+}
+
+function normalizeNamedCaseReference(reference: string): string {
+  let normalized = reference.trim();
+
+  if (normalized.startsWith("{") && normalized.endsWith("}")) {
+    normalized = normalized.slice(1, -1).trim();
+  }
+
+  if (normalized.startsWith("#")) {
+    normalized = normalized.slice(1);
+  }
+
+  return normalized.toLowerCase();
 }
 
 /** Extract the last AI message content from agent result */

@@ -13,11 +13,13 @@ describe("TestCaseSchema", () => {
   it("validates a test case with optional overrides", () => {
     const result = TestCaseSchema.safeParse({
       case: "check login",
+      name: "#login",
       baseUrl: "http://localhost:3000",
       timeout: 30000,
     });
     expect(result.success).toBe(true);
     if (result.success) {
+      expect(result.data.name).toBe("#login");
       expect(result.data.baseUrl).toBe("http://localhost:3000");
       expect(result.data.timeout).toBe(30000);
     }
@@ -51,11 +53,12 @@ describe("ConfigSchema", () => {
       baseUrl: "http://localhost:3000",
       browser: "chromium",
       headless: true,
+      sessionMode: "persistent",
       timeout: 60000,
       maxAttempts: 3,
       cacheDir: ".opencheck-cache",
       model: "claude-sonnet-4-5-20250929",
-      tests: [{ case: "check login is working" }],
+      tests: [{ case: "check login is working", name: "#login" }],
     });
     expect(result.success).toBe(true);
   });
@@ -68,6 +71,7 @@ describe("ConfigSchema", () => {
     if (result.success) {
       expect(result.data.browser).toBe("chromium");
       expect(result.data.headless).toBe(true);
+      expect(result.data.sessionMode).toBe("isolated");
       expect(result.data.timeout).toBe(60000);
       expect(result.data.maxAttempts).toBe(3);
       expect(result.data.cacheDir).toBe(".opencheck-cache");
@@ -126,6 +130,24 @@ describe("ConfigSchema", () => {
       });
       expect(result.success).toBe(true);
     }
+  });
+
+  it("accepts valid session modes", () => {
+    for (const sessionMode of ["isolated", "persistent"]) {
+      const result = ConfigSchema.safeParse({
+        sessionMode,
+        tests: [{ case: "test" }],
+      });
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it("rejects invalid session modes", () => {
+    const result = ConfigSchema.safeParse({
+      sessionMode: "shared",
+      tests: [{ case: "test" }],
+    });
+    expect(result.success).toBe(false);
   });
 
   it("accepts modelProvider as an optional string", () => {

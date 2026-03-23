@@ -39,9 +39,10 @@ For each test case:
 
 On the first run, no cache exists. The AI agent:
 1. Receives the test case description and base URL
-2. Uses Playwright MCP tools to navigate, click, type, and snapshot
-3. Determines pass/fail based on the browser state
-4. On success: the exact sequence of tool calls is saved to cache
+2. If the case includes references like `#login`, it can call an internal named-case lookup tool to fetch the referenced case text
+3. Uses Playwright MCP tools to navigate, click, type, and snapshot
+4. Determines pass/fail based on the browser state
+5. On success: the exact sequence of Playwright MCP tool calls is saved to cache
 
 ### Subsequent Runs (Warm)
 
@@ -61,9 +62,11 @@ When the UI changes and cached steps fail:
 
 Each test gets its own isolated agent with:
 - A fresh **Playwright MCP server** + **curl MCP server** (both always available)
+- An internal **named-case lookup tool** for resolving references like `#login`
 - A **LangChain ReAct agent** powered by Claude
 - A **unified system prompt** that tells the agent to:
   - Analyze the test case and choose the right tools
+  - Resolve named references through the lookup tool when needed
   - Use browser tools for UI tests, curl for API tests (or both)
   - Respond with `TEST_PASSED` or `TEST_FAILED`
 
@@ -73,7 +76,7 @@ For browser tests, the agent uses accessibility snapshots (not screenshots) to u
 
 ### Step Recording
 
-During AI execution, each MCP tool call is intercepted by a recording wrapper that captures `(toolName, toolInput)`. This is the data that gets cached:
+During AI execution, each MCP tool call is intercepted by a recording wrapper that captures `(toolName, toolInput)`. Internal helper tools such as named-case lookup are not recorded, so the cache only contains replayable browser/API steps. This is the data that gets cached:
 
 ```json
 {
@@ -89,7 +92,8 @@ During AI execution, each MCP tool call is intercepted by a recording wrapper th
 
 Tests run sequentially in v1. Each test gets:
 - Its own MCP server process
-- Its own browser context
-- Complete isolation from other tests
+- An isolated browser profile by default
+
+If `sessionMode: persistent` is set, OpenCheck reuses one temporary browser profile across tests within the same run only. The profile is deleted after the run completes.
 
 This ensures predictable, reproducible results.
