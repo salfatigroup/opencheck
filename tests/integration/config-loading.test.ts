@@ -11,6 +11,7 @@ describe("Config Loading (integration)", () => {
     expect(config.baseUrl).toBe("http://localhost:3000");
     expect(config.browser).toBe("chromium");
     expect(config.headless).toBe(true);
+    expect(config.sessionMode).toBe("persistent");
     expect(config.timeout).toBe(60000);
     expect(config.maxAttempts).toBe(3);
     expect(config.tests).toHaveLength(3);
@@ -22,6 +23,7 @@ describe("Config Loading (integration)", () => {
 
     expect(config.browser).toBe("chromium");
     expect(config.headless).toBe(true);
+    expect(config.sessionMode).toBe("isolated");
     expect(config.timeout).toBe(60000);
     expect(config.maxAttempts).toBe(3);
     expect(config.cacheDir).toBe(".opencheck-cache");

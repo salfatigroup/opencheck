@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Config } from "../../../src/config/types.ts";
+import { createChatModel } from "../../../src/agent/model-factory.ts";
 
 const mockInitChatModel = vi.fn().mockResolvedValue({
   _modelType: "mock-chat-model",
@@ -10,13 +11,12 @@ vi.mock("langchain/chat_models/universal", () => ({
   initChatModel: (...args: unknown[]) => mockInitChatModel(...args),
 }));
 
-const { createChatModel } = await import("../../../src/agent/model-factory.ts");
-
 describe("createChatModel", () => {
   const baseConfig: Config = {
     baseUrl: "http://localhost:3000",
     browser: "chromium",
     headless: true,
+    sessionMode: "isolated",
     timeout: 60000,
     maxAttempts: 3,
     cacheDir: ".opencheck-cache",

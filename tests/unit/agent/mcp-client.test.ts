@@ -7,6 +7,7 @@ describe("buildMcpServerConfig", () => {
     baseUrl: "http://localhost:3000",
     browser: "chromium",
     headless: true,
+    sessionMode: "isolated",
     timeout: 60000,
     maxAttempts: 3,
     cacheDir: ".opencheck-cache",
@@ -18,31 +19,48 @@ describe("buildMcpServerConfig", () => {
 
   it("returns config with playwright server", () => {
     const config = buildMcpServerConfig(baseConfig);
+    const playwrightServer = config.mcpServers["playwright"];
     expect(config).toHaveProperty("mcpServers");
     expect(config.mcpServers).toHaveProperty("playwright");
-    expect(config.mcpServers["playwright"]!.transport).toBe("stdio");
+    expect(playwrightServer).toBeDefined();
+    expect(playwrightServer?.transport).toBe("stdio");
     // Command is "node" when Playwright MCP CLI resolves locally, "npx" otherwise
-    expect(["npx", "node"]).toContain(config.mcpServers["playwright"]!.command);
+    expect(["npx", "node"]).toContain(playwrightServer?.command);
   });
 
   it("includes headless flag when config.headless is true", () => {
     const config = buildMcpServerConfig(baseConfig);
-    expect(config.mcpServers["playwright"]!.args).toContain("--headless");
+    expect(config.mcpServers["playwright"]?.args).toContain("--headless");
+  });
+
+  it("uses isolated sessions by default", () => {
+    const config = buildMcpServerConfig(baseConfig);
+    expect(config.mcpServers["playwright"]?.args).toContain("--isolated");
   });
 
   it("omits headless flag when config.headless is false", () => {
     const config = buildMcpServerConfig({ ...baseConfig, headless: false });
-    expect(config.mcpServers["playwright"]!.args).not.toContain("--headless");
+    expect(config.mcpServers["playwright"]?.args).not.toContain("--headless");
   });
 
   it("includes browser flag from config", () => {
     const config = buildMcpServerConfig(baseConfig);
-    expect(config.mcpServers["playwright"]!.args.some((a) => a.includes("chromium"))).toBe(true);
+    expect(config.mcpServers["playwright"]?.args.some((a) => a.includes("chromium"))).toBe(true);
   });
 
   it("uses the specified browser variant", () => {
     const config = buildMcpServerConfig({ ...baseConfig, browser: "firefox" });
-    expect(config.mcpServers["playwright"]!.args).toContain("--browser=firefox");
+    expect(config.mcpServers["playwright"]?.args).toContain("--browser=firefox");
+  });
+
+  it("passes user data dir for persistent sessions", () => {
+    const config = buildMcpServerConfig(
+      { ...baseConfig, sessionMode: "persistent" },
+      { userDataDir: "/tmp/opencheck-profile" },
+    );
+
+    expect(config.mcpServers["playwright"]?.args).toContain("--user-data-dir=/tmp/opencheck-profile");
+    expect(config.mcpServers["playwright"]?.args).not.toContain("--isolated");
   });
 
   it("returns only the playwright server", () => {

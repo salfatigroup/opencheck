@@ -16,6 +16,7 @@ describe("TestRunner", () => {
       baseUrl: "http://localhost:3000",
       browser: "chromium",
       headless: true,
+      sessionMode: "isolated",
       timeout: 60000,
       maxAttempts: 3,
       cacheDir: ".opencheck-cache",

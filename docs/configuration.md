@@ -12,6 +12,7 @@ opencheck --config tests.yaml
 baseUrl: "http://localhost:3000"
 browser: "chromium"
 headless: true
+sessionMode: "isolated"
 timeout: 60000
 maxAttempts: 3
 cacheDir: ".opencheck-cache"
@@ -20,7 +21,8 @@ model: "claude-sonnet-4-5-20250929"
 modelProvider: "anthropic"  # optional — auto-inferred for most models
 tests:
   - case: "check login is working"
-  - case: "verify dashboard loads after login"
+    name: "#login"
+  - case: "#login, then verify dashboard loads after login"
     baseUrl: "http://localhost:3000/dashboard"
     timeout: 30000
   - case: "GET /api/health returns 200"
@@ -35,6 +37,7 @@ tests:
 | `baseUrl` | `string` (URL) | _(none)_ | Base URL for all tests. Optional but recommended. |
 | `browser` | `"chromium" \| "firefox" \| "webkit"` | `"chromium"` | Browser engine to use. |
 | `headless` | `boolean` | `true` | Run browser in headless mode. Set `false` for debugging. |
+| `sessionMode` | `"isolated" \| "persistent"` | `"isolated"` | Browser session mode. `isolated` starts from a clean browser profile. `persistent` reuses one temporary profile for the duration of a single OpenCheck run. |
 | `timeout` | `number` (ms) | `60000` | Per-test timeout in milliseconds. Must be positive. |
 | `maxAttempts` | `number` (1-10) | `3` | Max AI retry attempts per test before marking as failed. |
 | `cacheDir` | `string` | `".opencheck-cache"` | Directory for cached step recordings. |
@@ -50,8 +53,22 @@ Each entry in the `tests` array supports:
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `case` | `string` | _(required)_ | Natural language description of what to test. The AI auto-selects browser or API tools based on this. |
+| `name` | `string` | _(none)_ | Optional name for referencing a test case from another case, e.g. `#login`. |
 | `baseUrl` | `string` (URL) | _(inherits top-level)_ | Override the base URL for this specific test. |
 | `timeout` | `number` (ms) | _(inherits top-level)_ | Override the timeout for this specific test. |
+
+## Named References
+
+Named test cases let you keep config simple while still reusing intent:
+
+```yaml
+tests:
+  - name: "#login"
+    case: "Navigate to portal dashboard, and login with testuser+clerk_test@example.com and OTP code 424242"
+  - case: "#login, then navigate to search page, and search for 'Elon Musk'"
+```
+
+OpenCheck does not expand these references in the runner. Instead, during an AI execution the agent is instructed to use an internal lookup tool to resolve references like `#login` or `{login}` before acting. Cached runs still replay the browser steps directly.
 
 ## Validation
 
@@ -67,6 +84,7 @@ Common validation errors:
 - **Empty `case` string** - Each test case needs a non-empty description
 - **Invalid URL** - `baseUrl` must be a valid URL (e.g., `http://localhost:3000`)
 - **Invalid browser** - Must be `chromium`, `firefox`, or `webkit`
+- **Invalid sessionMode** - Must be `isolated` or `persistent`
 - **`maxAttempts` out of range** - Must be between 1 and 10
 
 ## Minimal Config

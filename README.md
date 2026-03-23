@@ -11,9 +11,11 @@ Write test cases in plain English. An AI agent executes them in a real browser o
 ```yaml
 # tests.yaml
 baseUrl: "http://localhost:3000"
+sessionMode: "isolated"
 tests:
-  - case: "check login is working"
-  - case: "verify dashboard loads after login"
+  - name: "#login"
+    case: "check login is working"
+  - case: "#login, then verify dashboard loads after login"
   - case: "check logout redirects to login page"
   - case: "GET /api/health returns 200"
 ```
@@ -98,6 +100,7 @@ opencheck --config tests.yaml
 2. For each test case:
    - **Cached?** Replay stored steps instantly (no AI needed)
    - **No cache / cache stale?** AI agent drives the browser
+   - **Named references?** The agent can resolve `#login`-style references through an internal lookup tool
    - **AI passes?** Steps saved to `.opencheck-cache/`
    - **AI fails after retries?** Test marked failed, stale cache deleted
 3. Summary printed with pass/fail/cached counts and timing

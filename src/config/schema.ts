@@ -3,6 +3,7 @@ import { z } from "zod";
 /** Schema for a single test case in the configuration */
 export const TestCaseSchema = z.object({
   case: z.string().min(1, "Test case description cannot be empty"),
+  name: z.string().min(1, "Test case name cannot be empty").optional(),
   baseUrl: z.string().url().optional(),
   timeout: z.number().positive().optional(),
 });
@@ -12,6 +13,7 @@ export const ConfigSchema = z.object({
   baseUrl: z.string().url().optional(),
   browser: z.enum(["chromium", "firefox", "webkit"]).default("chromium"),
   headless: z.boolean().default(true),
+  sessionMode: z.enum(["isolated", "persistent"]).default("isolated"),
   timeout: z.number().positive().default(60_000),
   maxAttempts: z.number().int().positive().max(10).default(3),
   cacheDir: z.string().default(".opencheck-cache"),

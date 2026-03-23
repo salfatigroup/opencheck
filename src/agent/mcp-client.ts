@@ -14,6 +14,11 @@ export interface McpServerConfig {
   mcpServers: Record<string, McpServerEntry>;
 }
 
+/** Runtime MCP options derived by OpenCheck */
+export interface McpRuntimeOptions {
+  userDataDir?: string;
+}
+
 /**
  * Build the MCP server configuration with both Playwright and curl servers.
  * The AI agent receives all tools and autonomously chooses which to use
@@ -22,6 +27,10 @@ export interface McpServerConfig {
  * @param outputDir - Optional per-test output directory for recordings
  */
 export function buildMcpServerConfig(config: Config, outputDir?: string): McpServerConfig {
+export function buildMcpServerConfig(
+  config: Config,
+  runtimeOptions: McpRuntimeOptions = {},
+): McpServerConfig {
   const playwrightCliPath = resolvePlaywrightMcp();
   const playwrightArgs: string[] = [];
 
@@ -33,6 +42,12 @@ export function buildMcpServerConfig(config: Config, outputDir?: string): McpSer
 
   if (config.headless) {
     playwrightArgs.push("--headless");
+  }
+
+  if (config.sessionMode === "isolated") {
+    playwrightArgs.push("--isolated");
+  } else if (runtimeOptions.userDataDir) {
+    playwrightArgs.push(`--user-data-dir=${runtimeOptions.userDataDir}`);
   }
 
   playwrightArgs.push(`--browser=${config.browser}`);
@@ -62,7 +77,6 @@ export function buildMcpServerConfig(config: Config, outputDir?: string): McpSer
 function resolvePlaywrightMcp(): string | null {
   const { existsSync } = require("node:fs");
   const { join } = require("node:path");
-  const { execSync } = require("node:child_process");
 
   // Check npx cache
   const npxCachePath = join(
@@ -83,11 +97,14 @@ function resolvePlaywrightMcp(): string | null {
  * @param config - The OpenCheck configuration
  * @returns Object with tools array and a cleanup function
  */
-export async function createMcpClient(config: Config): Promise<{
+export async function createMcpClient(
+  config: Config,
+  runtimeOptions: McpRuntimeOptions = {},
+): Promise<{
   tools: DynamicStructuredTool[];
   cleanup: () => Promise<void>;
 }> {
-  const mcpConfig = buildMcpServerConfig(config);
+  const mcpConfig = buildMcpServerConfig(config, runtimeOptions);
   const client = new MultiServerMCPClient(mcpConfig);
   const tools = await client.getTools();
 
