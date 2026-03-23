@@ -284,7 +284,7 @@ describe("AgentFactory", () => {
       invoke: vi.fn().mockRejectedValue(recursionError),
     }));
 
-    const factory = new AgentFactory(baseConfig);
+    const factory = new AgentFactory(baseConfig, {}, mockCreateChatModel);
     const result = await factory.executeTest("check login is working", "http://localhost:3000");
 
     expect(result.passed).toBe(false);
@@ -298,7 +298,7 @@ describe("AgentFactory", () => {
       invoke: vi.fn().mockRejectedValue(new Error("Something went wrong")),
     }));
 
-    const factory = new AgentFactory(baseConfig);
+    const factory = new AgentFactory(baseConfig, {}, mockCreateChatModel);
     const result = await factory.executeTest("check login is working", "http://localhost:3000");
 
     expect(result.passed).toBe(false);
@@ -311,7 +311,7 @@ describe("AgentFactory", () => {
       invoke: vi.fn().mockRejectedValue(new Error("429 rate limit exceeded")),
     }));
 
-    const factory = new AgentFactory(baseConfig);
+    const factory = new AgentFactory(baseConfig, {}, mockCreateChatModel);
     const result = await factory.executeTest("check login is working", "http://localhost:3000");
 
     expect(result.passed).toBe(false);
