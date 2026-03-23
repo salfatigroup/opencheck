@@ -1,0 +1,62 @@
+name: OpenCheck Self-Test
+
+on:
+  pull_request:
+
+jobs:
+  smoke-test:
+    name: CLI smoke test (local build)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Verify --help
+        run: bun run src/cli.ts --help
+
+      - name: Verify --version
+        run: bun run src/cli.ts --version
+
+      - name: Verify --validate with minimal config
+        run: bun run src/cli.ts --config tests/fixtures/minimal-config.yaml --validate
+
+      - name: Verify --validate with full config
+        run: bun run src/cli.ts --config tests/fixtures/valid-config.yaml --validate
+
+      - name: Verify missing config exits non-zero
+        run: |
+          set +e
+          bun run src/cli.ts --config nonexistent.yaml 2>&1
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo "Expected non-zero exit code for missing config"
+            exit 1
+          fi
+
+      - name: Verify invalid config exits non-zero
+        run: |
+          set +e
+          bun run src/cli.ts --config tests/fixtures/invalid-config.yaml 2>&1
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo "Expected non-zero exit code for invalid config"
+            exit 1
+          fi
+
+  workflow-test:
+    name: Reusable workflow integration
+    uses: ./.github/workflows/opencheck.yml
+    with:
+      config: tests/fixtures/minimal-config.yaml
+      local-build: true
+      extra-args: "--validate"
