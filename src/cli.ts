@@ -22,13 +22,21 @@ program
   .description("AI-powered end-to-end browser and API test automation")
   .version("0.1.0")
   .requiredOption("-c, --config <path>", "Path to tests.yaml config file")
-  .action(async (options: { config: string }) => {
+  .option("--validate", "Validate config and exit without running tests")
+  .action(async (options: { config: string; validate?: boolean }) => {
     let exitCode = 0;
     let persistentUserDataDir: string | null = null;
     let unexpectedError: unknown = null;
 
     try {
       const config = await loadConfig(options.config);
+
+      if (options.validate) {
+        console.log(`\nOpenCheck v0.1.0`);
+        console.log(`Config validated successfully (${config.tests.length} test(s) defined)\n`);
+        process.exit(0);
+      }
+
       const mcpRuntimeOptions: McpRuntimeOptions = {};
       if (config.sessionMode === "persistent") {
         persistentUserDataDir = await mkdtemp(join(tmpdir(), "opencheck-profile-"));
