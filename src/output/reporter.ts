@@ -63,6 +63,24 @@ export class ConsoleReporter implements Reporter {
       console.log("    • If a test failed with an auth error, verify your API key is configured correctly.");
       console.log("    • Run with a single test case to isolate failures: opencheck -c <config-with-one-test.yaml>");
     }
+
+    const recorded = data.results.filter((r) => r.recordingDir);
+    if (recorded.length > 0) {
+      console.log("");
+      console.log("━".repeat(50));
+      console.log("  Recordings");
+      console.log("━".repeat(50));
+      for (const result of recorded) {
+        const icon = result.status === "passed" ? "✓" : "✗";
+        console.log(`  ${icon} ${result.testCase}`);
+        console.log(`    Trace: ${result.recordingDir}/trace.zip`);
+        console.log(`    Video: ${result.recordingDir}/video.webm`);
+      }
+      console.log("");
+      console.log("  View traces:");
+      console.log("    bunx playwright show-trace .opencheck-recordings/<test>/trace.zip");
+      console.log("    or upload to: https://trace.playwright.dev");
+    }
   }
 }
 

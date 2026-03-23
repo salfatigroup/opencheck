@@ -16,6 +16,7 @@ sessionMode: "isolated"
 timeout: 60000
 maxAttempts: 3
 cacheDir: ".opencheck-cache"
+recording: true
 model: "claude-sonnet-4-5-20250929"
 modelProvider: "anthropic"  # optional — auto-inferred for most models
 tests:
@@ -40,6 +41,7 @@ tests:
 | `timeout` | `number` (ms) | `60000` | Per-test timeout in milliseconds. Must be positive. |
 | `maxAttempts` | `number` (1-10) | `3` | Max AI retry attempts per test before marking as failed. |
 | `cacheDir` | `string` | `".opencheck-cache"` | Directory for cached step recordings. |
+| `recording` | `boolean` | `true` | Enable Playwright trace and video recording per test. Saves to `.opencheck-recordings/`. Set `false` to disable. |
 | `model` | `string` | `"claude-sonnet-4-5-20250929"` | LLM model identifier for the AI agent. |
 | `modelProvider` | `string` | _(auto-inferred)_ | LangChain provider name. Required for Bedrock; auto-inferred for Anthropic, OpenAI, etc. See [Providers](../README.md#providers). |
 | `tests` | `TestCase[]` | _(required)_ | Array of test cases. Must have at least one entry. |

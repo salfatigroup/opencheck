@@ -28,6 +28,7 @@ describe("TestExecutor", () => {
       cacheDir: tempDir,
       model: "claude-sonnet-4-5-20250929",
       recursionLimit: 500,
+      recording: false,
       tests: [{ case: "check login" }],
     };
     cacheManager = new CacheManager(tempDir);

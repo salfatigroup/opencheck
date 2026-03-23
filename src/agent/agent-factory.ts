@@ -1,6 +1,7 @@
 import { MultiServerMCPClient } from "@langchain/mcp-adapters";
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { join, resolve } from "node:path";
 import { z } from "zod";
 import { StepRecorder } from "../cache/step-recorder.ts";
 import {
@@ -85,7 +86,10 @@ export class AgentFactory {
    * @returns AgentExecutionResult with pass/fail, steps, and message
    */
   async executeTest(testCase: string, baseUrl: string): Promise<AgentExecutionResult> {
-    const mcpConfig = buildMcpServerConfig(this.config, this.runtimeOptions);
+    const recordingDir = this.config.recording
+      ? resolve(join(".opencheck-recordings", sanitizeTestName(testCase)))
+      : undefined;
+    const mcpConfig = buildMcpServerConfig(this.config, this.runtimeOptions, recordingDir);
     const client = new MultiServerMCPClient(mcpConfig);
     const recorder = new StepRecorder();
 
@@ -135,6 +139,7 @@ export class AgentFactory {
         passed,
         steps: recorder.getSteps(),
         message: lastMessage,
+        recordingDir,
       };
     } catch (error) {
       return {
@@ -193,6 +198,15 @@ function normalizeNamedCaseReference(reference: string): string {
   }
 
   return normalized.toLowerCase();
+}
+
+/** Convert a test case description to a filesystem-safe directory name */
+function sanitizeTestName(testCase: string): string {
+  return testCase
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 100);
 }
 
 /** Extract the last AI message content from agent result */

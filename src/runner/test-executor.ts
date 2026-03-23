@@ -57,12 +57,15 @@ export class TestExecutor {
   ): Promise<TestResult> {
     let lastError = "";
 
+    let recordingDir: string | undefined;
+
     for (let attempt = 0; attempt < this.config.maxAttempts; attempt++) {
       const agentResult = await this.agentFactory.executeTest(testCase, baseUrl);
+      recordingDir = agentResult.recordingDir;
 
       if (agentResult.passed) {
         await this.cacheManager.save(testCase, baseUrl, agentResult.steps);
-        return buildResult(testCase, "passed", "ai", startTime);
+        return buildResult(testCase, "passed", "ai", startTime, undefined, recordingDir);
       }
 
       lastError = agentResult.message;
@@ -70,7 +73,7 @@ export class TestExecutor {
 
     // All attempts exhausted — delete stale cache and fail
     await this.cacheManager.delete(testCase, baseUrl);
-    return buildResult(testCase, "failed", "ai", startTime, lastError);
+    return buildResult(testCase, "failed", "ai", startTime, lastError, recordingDir);
   }
 }
 
@@ -80,6 +83,7 @@ function buildResult(
   source: "cache" | "ai",
   startTime: number,
   error?: string,
+  recordingDir?: string,
 ): TestResult {
   return {
     testCase,
@@ -87,5 +91,6 @@ function buildResult(
     source,
     durationMs: Date.now() - startTime,
     ...(error ? { error } : {}),
+    ...(recordingDir ? { recordingDir } : {}),
   };
 }

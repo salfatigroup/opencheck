@@ -24,18 +24,36 @@ export interface McpRuntimeOptions {
  * The AI agent receives all tools and autonomously chooses which to use
  * based on the test case description.
  * @param config - The OpenCheck configuration
+ * @param outputDir - Optional per-test output directory for recordings
  */
 export function buildMcpServerConfig(
   config: Config,
-  runtimeOptions: McpRuntimeOptions = {},
+  outputDir?: string,
+): McpServerConfig;
+export function buildMcpServerConfig(
+  config: Config,
+  runtimeOptions?: McpRuntimeOptions,
+): McpServerConfig;
+export function buildMcpServerConfig(
+  config: Config,
+  runtimeOptions: McpRuntimeOptions,
+  outputDir?: string,
+): McpServerConfig;
+export function buildMcpServerConfig(
+  config: Config,
+  runtimeOptionsOrOutputDir: McpRuntimeOptions | string = {},
+  outputDir?: string,
 ): McpServerConfig {
+  const runtimeOptions =
+    typeof runtimeOptionsOrOutputDir === "string" ? {} : runtimeOptionsOrOutputDir;
+  const resolvedOutputDir =
+    typeof runtimeOptionsOrOutputDir === "string" ? runtimeOptionsOrOutputDir : outputDir;
   const playwrightCliPath = resolvePlaywrightMcp();
   const playwrightArgs: string[] = [];
 
   if (playwrightCliPath) {
     playwrightArgs.push(playwrightCliPath);
   } else {
-    // Fallback to npx
     playwrightArgs.push("-y", "@playwright/mcp@latest");
   }
 
@@ -50,6 +68,14 @@ export function buildMcpServerConfig(
   }
 
   playwrightArgs.push(`--browser=${config.browser}`);
+
+  if (config.recording) {
+    playwrightArgs.push("--save-trace");
+    playwrightArgs.push("--save-video=1280x720");
+    if (resolvedOutputDir) {
+      playwrightArgs.push("--output-dir", resolvedOutputDir);
+    }
+  }
 
   const command = playwrightCliPath ? "node" : "npx";
 

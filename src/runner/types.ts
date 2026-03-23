@@ -11,6 +11,7 @@ export interface TestResult {
   source: TestSource;
   durationMs: number;
   error?: string;
+  recordingDir?: string;
 }
 
 /** Overall run result from the test runner */

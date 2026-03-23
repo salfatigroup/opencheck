@@ -13,6 +13,7 @@ describe("buildMcpServerConfig", () => {
     cacheDir: ".opencheck-cache",
     model: "claude-sonnet-4-5-20250929",
     recursionLimit: 500,
+    recording: false,
     tests: [{ case: "check login" }],
   };
 
@@ -67,5 +68,26 @@ describe("buildMcpServerConfig", () => {
     const serverNames = Object.keys(config.mcpServers);
     expect(serverNames).toContain("playwright");
     expect(serverNames).toHaveLength(1);
+  });
+
+  it("includes recording flags when recording is enabled", () => {
+    const config = buildMcpServerConfig({ ...baseConfig, recording: true });
+    const args = config.mcpServers["playwright"]!.args;
+    expect(args).toContain("--save-trace");
+    expect(args.some((a) => a.startsWith("--save-video="))).toBe(true);
+  });
+
+  it("omits recording flags when recording is disabled", () => {
+    const config = buildMcpServerConfig(baseConfig);
+    const args = config.mcpServers["playwright"]!.args;
+    expect(args).not.toContain("--save-trace");
+    expect(args.some((a) => a.startsWith("--save-video="))).toBe(false);
+  });
+
+  it("includes output-dir when recording is enabled and outputDir is provided", () => {
+    const config = buildMcpServerConfig({ ...baseConfig, recording: true }, "/tmp/recordings");
+    const args = config.mcpServers["playwright"]!.args;
+    expect(args).toContain("--output-dir");
+    expect(args).toContain("/tmp/recordings");
   });
 });

@@ -1,0 +1,114 @@
+name: OpenCheck
+
+on:
+  workflow_call:
+    inputs:
+      config:
+        description: "Path to tests.yaml config file"
+        required: false
+        type: string
+        default: "tests.yaml"
+      working-directory:
+        description: "Working directory for running OpenCheck"
+        required: false
+        type: string
+        default: "."
+      bun-version:
+        description: "Bun version to use"
+        required: false
+        type: string
+        default: "latest"
+      artifact-retention-days:
+        description: "Number of days to retain recording artifacts"
+        required: false
+        type: number
+        default: 30
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  opencheck:
+    name: Run OpenCheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ inputs.bun-version }}
+
+      - name: Run OpenCheck
+        id: opencheck
+        working-directory: ${{ inputs.working-directory }}
+        shell: bash
+        run: |
+          set +e
+          bunx opencheck --config "${{ inputs.config }}" > /tmp/opencheck-output.txt 2>&1
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+          set -e
+          cat /tmp/opencheck-output.txt
+
+      - name: Upload test recordings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencheck-recordings
+          path: ${{ inputs.working-directory }}/.opencheck-recordings/
+          if-no-files-found: ignore
+          retention-days: ${{ inputs.artifact-retention-days }}
+
+      - name: Comment on PR
+        if: always() && github.event.pull_request
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const output = fs.readFileSync('/tmp/opencheck-output.txt', 'utf8');
+            const exitCode = '${{ steps.opencheck.outputs.exit_code }}';
+            const passed = exitCode === '0';
+            const icon = passed ? '✅' : '❌';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            let body = `<!-- opencheck-results -->\n`;
+            body += `## ${icon} OpenCheck Results\n\n`;
+            body += '```\n' + output + '\n```\n';
+
+            if (!passed) {
+              body += `\n> 📹 Download recordings from [Actions run summary](${runUrl}) → **opencheck-recordings** artifact\n`;
+            }
+            body += `\n> View traces: drag \`trace.zip\` into [trace.playwright.dev](https://trace.playwright.dev)\n`;
+
+            const prNumber = context.payload.pull_request.number;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+
+            const marker = '<!-- opencheck-results -->';
+            const existing = comments.find(c => c.body?.startsWith(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body,
+              });
+            }
+
+      - name: Exit with test result
+        if: always()
+        shell: bash
+        run: exit ${{ steps.opencheck.outputs.exit_code }}
