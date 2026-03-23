@@ -110,6 +110,12 @@ export class AgentFactory {
         steps: recorder.getSteps(),
         message: formatAgentError(error, testCase, this.config.recursionLimit),
       };
+    } catch (error) {
+      return {
+        passed: false,
+        steps: recorder.getSteps(),
+        message: formatAgentError(error, testCase, this.config.recursionLimit),
+      };
     } finally {
       await client.close();
     }
