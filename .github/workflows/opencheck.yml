@@ -23,6 +23,16 @@ on:
         required: false
         type: number
         default: 30
+      local-build:
+        description: "Use local repository source instead of published npm package"
+        required: false
+        type: boolean
+        default: false
+      extra-args:
+        description: "Additional CLI arguments to pass to opencheck"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -41,13 +51,21 @@ jobs:
         with:
           bun-version: ${{ inputs.bun-version }}
 
+      - name: Install dependencies (local build)
+        if: ${{ inputs.local-build }}
+        run: bun install --frozen-lockfile
+
       - name: Run OpenCheck
         id: opencheck
         working-directory: ${{ inputs.working-directory }}
         shell: bash
         run: |
           set +e
-          bunx opencheck --config "${{ inputs.config }}" > /tmp/opencheck-output.txt 2>&1
+          if [ "${{ inputs.local-build }}" = "true" ]; then
+            bun run $GITHUB_WORKSPACE/src/cli.ts --config "${{ inputs.config }}" ${{ inputs.extra-args }} > /tmp/opencheck-output.txt 2>&1
+          else
+            bunx opencheck --config "${{ inputs.config }}" ${{ inputs.extra-args }} > /tmp/opencheck-output.txt 2>&1
+          fi
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
           set -e
           cat /tmp/opencheck-output.txt
