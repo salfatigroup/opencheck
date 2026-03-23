@@ -24,6 +24,7 @@ program
   .action(async (options: { config: string }) => {
     let exitCode = 0;
     let persistentUserDataDir: string | null = null;
+    let unexpectedError: unknown = null;
 
     try {
       const config = await loadConfig(options.config);
@@ -129,12 +130,27 @@ program
         console.error(`Error: ${error.message}`);
         exitCode = 1;
       } else {
-        throw error;
+        unexpectedError = error;
+        exitCode = 1;
       }
     } finally {
       if (persistentUserDataDir) {
         await rm(persistentUserDataDir, { recursive: true, force: true });
       }
+    }
+
+    if (unexpectedError) {
+      const errorName = unexpectedError instanceof Error ? unexpectedError.constructor.name : "UnknownError";
+      const errorMessage = unexpectedError instanceof Error ? unexpectedError.message : String(unexpectedError);
+      console.error("");
+      console.error("━".repeat(50));
+      console.error("  OpenCheck encountered an unexpected error");
+      console.error("━".repeat(50));
+      console.error(`  ${errorName}: ${errorMessage}`);
+      console.error("");
+      console.error("  This is likely a bug in OpenCheck or a misconfigured environment.");
+      console.error("  Please check your config file and environment variables, then retry.");
+      console.error("━".repeat(50));
     }
 
     process.exit(exitCode);

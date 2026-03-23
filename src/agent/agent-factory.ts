@@ -136,6 +136,12 @@ export class AgentFactory {
         steps: recorder.getSteps(),
         message: lastMessage,
       };
+    } catch (error) {
+      return {
+        passed: false,
+        steps: recorder.getSteps(),
+        message: formatAgentError(error, testCase, this.config.recursionLimit),
+      };
     } finally {
       await client.close();
     }
@@ -197,4 +203,46 @@ function extractLastMessage(result: Record<string, unknown>): string {
   }
   const last = messages[messages.length - 1];
   return last?.content ?? "No content in last message";
+}
+
+/** Convert an agent runtime error into a user-friendly failure message */
+function formatAgentError(error: unknown, testCase: string, recursionLimit: number): string {
+  const errorName = error instanceof Error ? error.constructor.name : "UnknownError";
+  const errorMessage = error instanceof Error ? error.message : String(error);
+
+  if (errorName === "GraphRecursionError" || errorMessage.includes("Recursion limit")) {
+    return [
+      `TEST_FAILED: Agent exceeded the recursion limit (${recursionLimit} steps) while executing this test.`,
+      `  The test "${testCase}" required more steps than the configured limit allows.`,
+      `  Suggestion: Increase 'recursionLimit' in your config (current: ${recursionLimit}), or simplify the test case into smaller, focused checks.`,
+    ].join("\n");
+  }
+
+  if (errorMessage.includes("rate limit") || errorMessage.includes("429")) {
+    return [
+      `TEST_FAILED: The AI model returned a rate-limit error.`,
+      `  Suggestion: Wait a moment and retry, or check your API key usage and billing.`,
+    ].join("\n");
+  }
+
+  if (errorMessage.includes("401") || errorMessage.includes("authentication") || errorMessage.includes("API key")) {
+    return [
+      `TEST_FAILED: Authentication error when calling the AI model.`,
+      `  Suggestion: Verify your API key is set correctly in your environment.`,
+    ].join("\n");
+  }
+
+  if (errorMessage.includes("ECONNREFUSED") || errorMessage.includes("ENOTFOUND") || errorMessage.includes("network")) {
+    return [
+      `TEST_FAILED: Network error while running the agent.`,
+      `  Error: ${errorMessage}`,
+      `  Suggestion: Check your network connection and ensure the target URL is reachable.`,
+    ].join("\n");
+  }
+
+  return [
+    `TEST_FAILED: Unexpected error during agent execution (${errorName}).`,
+    `  Error: ${errorMessage}`,
+    `  Suggestion: This may be a transient issue. Check the error above and retry.`,
+  ].join("\n");
 }

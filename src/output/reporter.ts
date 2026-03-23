@@ -17,10 +17,17 @@ export class ConsoleReporter implements Reporter {
     status: TestStatus,
     source: TestSource,
     durationMs: number,
+    error?: string,
   ): void {
     const prefix = status === "passed" ? "  [PASS]" : "  [FAIL]";
     const duration = formatDuration(durationMs);
     console.log(`${prefix} ${testCase} (${source}, ${duration})`);
+
+    if (status === "failed" && error) {
+      for (const line of error.split("\n")) {
+        console.log(`         ${line}`);
+      }
+    }
   }
 
   /** Called after all tests complete; prints summary table */
@@ -41,12 +48,20 @@ export class ConsoleReporter implements Reporter {
       console.log("  Failed tests:");
       for (const result of data.results) {
         if (result.status === "failed") {
-          console.log(`    - ${result.testCase}`);
+          console.log(`    ✗ ${result.testCase}`);
           if (result.error) {
-            console.log(`      ${result.error}`);
+            for (const line of result.error.split("\n")) {
+              console.log(`      ${line}`);
+            }
           }
         }
       }
+      console.log("");
+      console.log("  Troubleshooting tips:");
+      console.log("    • If a test hit the recursion limit, increase 'recursionLimit' in your config or break the test into smaller checks.");
+      console.log("    • If a test failed with a network error, verify the target URL is reachable from your CI environment.");
+      console.log("    • If a test failed with an auth error, verify your API key is configured correctly.");
+      console.log("    • Run with a single test case to isolate failures: opencheck -c <config-with-one-test.yaml>");
     }
   }
 }

@@ -274,4 +274,47 @@ describe("AgentFactory", () => {
     expect(result.passed).toBe(false);
     expect(result.message).toContain("TEST_FAILED");
   });
+
+  it("returns user-friendly error on GraphRecursionError", async () => {
+    const recursionError = new Error("Recursion limit of 500 reached without hitting a stop condition.");
+    Object.defineProperty(recursionError, "constructor", {
+      value: { name: "GraphRecursionError" },
+    });
+    (createReactAgent as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
+      invoke: vi.fn().mockRejectedValue(recursionError),
+    }));
+
+    const factory = new AgentFactory(baseConfig);
+    const result = await factory.executeTest("check login is working", "http://localhost:3000");
+
+    expect(result.passed).toBe(false);
+    expect(result.message).toContain("TEST_FAILED");
+    expect(result.message).toContain("recursion limit");
+    expect(result.message).toContain("Suggestion");
+  });
+
+  it("returns user-friendly error on unexpected exceptions", async () => {
+    (createReactAgent as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
+      invoke: vi.fn().mockRejectedValue(new Error("Something went wrong")),
+    }));
+
+    const factory = new AgentFactory(baseConfig);
+    const result = await factory.executeTest("check login is working", "http://localhost:3000");
+
+    expect(result.passed).toBe(false);
+    expect(result.message).toContain("TEST_FAILED");
+    expect(result.message).toContain("Something went wrong");
+  });
+
+  it("returns user-friendly error on rate limit errors", async () => {
+    (createReactAgent as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
+      invoke: vi.fn().mockRejectedValue(new Error("429 rate limit exceeded")),
+    }));
+
+    const factory = new AgentFactory(baseConfig);
+    const result = await factory.executeTest("check login is working", "http://localhost:3000");
+
+    expect(result.passed).toBe(false);
+    expect(result.message).toContain("rate-limit");
+  });
 });
