@@ -108,18 +108,19 @@ opencheck --config tests.yaml
 
 ## Test Recordings
 
-Enable video and trace recordings of every test run with a single config line:
+Every test run records a Playwright trace and video by default:
 
 ```yaml
 # tests.yaml
 baseUrl: "http://localhost:3000"
-recording: true
 tests:
   - case: "check login is working"
   - case: "verify dashboard loads after login"
 ```
 
-When `recording: true`, each test saves a **Playwright trace** and **video** to `.opencheck-recordings/<test-name>/`. Traces capture DOM snapshots, screenshots, network, and console at every step — ideal for debugging failed tests (expected vs actual).
+Each test saves a **Playwright trace** and **video** to `.opencheck-recordings/<test-name>/`. Traces capture DOM snapshots, screenshots, network, and console at every step — ideal for debugging failed tests (expected vs actual).
+
+To disable recordings, set `recording: false` in your `tests.yaml`.
 
 ### Viewing Recordings
 
@@ -156,7 +157,7 @@ jobs:
     secrets: inherit
 ```
 
-Enable recordings in your `tests.yaml` with `recording: true` to upload trace and video artifacts.
+Because recordings are enabled by default, trace and video artifacts will be uploaded automatically unless you set `recording: false`.
 
 That's it. On each PR, you'll get:
 - A **PR comment** with the full test results summary
