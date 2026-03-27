@@ -1,6 +1,7 @@
 import { readFile, access } from "node:fs/promises";
 import { parse as parseYaml } from "yaml";
 import { ConfigSchema } from "./schema.ts";
+import { expandEnvVars } from "./env.ts";
 import type { Config } from "./types.ts";
 
 /** Error thrown when config loading or validation fails */
@@ -21,7 +22,8 @@ export class ConfigLoadError extends Error {
 export async function loadConfig(filePath: string): Promise<Config> {
   await assertFileExists(filePath);
   const raw = await readYamlFile(filePath);
-  return validateConfig(raw);
+  const expanded = expandEnvVars(raw);
+  return validateConfig(expanded);
 }
 
 async function assertFileExists(filePath: string): Promise<void> {

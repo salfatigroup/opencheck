@@ -46,10 +46,32 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
         shell: bash
         run: |
-          set +e
-          bunx opencheck --config "${{ inputs.config }}" > /tmp/opencheck-output.txt 2>&1
-          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
-          set -e
+          CONFIG="${{ inputs.config }}"
+          EXIT=0
+
+          if [ -d "$CONFIG" ]; then
+            FILES=$(find "$CONFIG" -maxdepth 1 -name '*.yaml' -o -name '*.yml' | sort)
+            if [ -z "$FILES" ]; then
+              echo "No .yaml/.yml files found in $CONFIG" >&2
+              echo "exit_code=1" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            for f in $FILES; do
+              echo "==> Running: $f"
+              set +e
+              bunx opencheck --config "$f" >> /tmp/opencheck-output.txt 2>&1
+              RC=$?
+              set -e
+              if [ $RC -ne 0 ]; then EXIT=$RC; fi
+            done
+          else
+            set +e
+            bunx opencheck --config "$CONFIG" > /tmp/opencheck-output.txt 2>&1
+            EXIT=$?
+            set -e
+          fi
+
+          echo "exit_code=$EXIT" >> "$GITHUB_OUTPUT"
           cat /tmp/opencheck-output.txt
 
       - name: Upload test recordings
