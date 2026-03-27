@@ -1,19 +1,27 @@
 import type { CacheManager } from "../cache/cache-manager.ts";
 import type { AgentFactory } from "../agent/agent-factory.ts";
-import type { Config } from "../config/types.ts";
+import type { Config, TestCase } from "../config/types.ts";
 import type { TestResult } from "./types.ts";
 import type { ReplayResult } from "../cache/step-replayer.ts";
 import type { CachedStep } from "../cache/types.ts";
 
-/** Function that replays cached steps; injectable for testing */
 type ReplayFn = (steps: CachedStep[]) => Promise<ReplayResult>;
 
-/**
- * Executes a single test case following the cache-first-then-AI strategy:
- * 1. Try replaying from cache
- * 2. On cache miss/fail, invoke AI agent
- * 3. Save new steps on AI success, delete stale cache on AI failure
- */
+class TestTimeoutError extends Error {
+  constructor(timeoutMs: number) {
+    super(`Test exceeded timeout of ${timeoutMs}ms`);
+    this.name = "TestTimeoutError";
+  }
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new TestTimeoutError(timeoutMs)), timeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 export class TestExecutor {
   private readonly cacheManager: CacheManager;
   private readonly agentFactory: AgentFactory;
@@ -32,21 +40,45 @@ export class TestExecutor {
     this.replayFn = replayFn ?? null;
   }
 
-  /** Execute a single test case */
   async execute(testCase: string, baseUrl: string): Promise<TestResult> {
     const startTime = Date.now();
+    const testConfig = this.config.tests.find((t) => t.case === testCase);
+    const timeoutMs = testConfig?.timeout ?? this.config.timeout;
 
-    // Phase 1: Try cache replay
+    try {
+      return await withTimeout(
+        this.executeInner(testCase, baseUrl, startTime),
+        timeoutMs,
+      );
+    } catch (error) {
+      if (error instanceof TestTimeoutError) {
+        await this.cacheManager.delete(testCase, baseUrl);
+        return buildResult(
+          testCase,
+          "failed",
+          "ai",
+          startTime,
+          `TEST_FAILED: ${error.message}. The test was killed after ${timeoutMs}ms.`,
+        );
+      }
+      throw error;
+    }
+  }
+
+  private async executeInner(
+    testCase: string,
+    baseUrl: string,
+    startTime: number,
+  ): Promise<TestResult> {
     const cacheEntry = await this.cacheManager.load(testCase, baseUrl);
+
     if (cacheEntry && this.replayFn) {
       const replayResult = await this.replayFn(cacheEntry.steps);
       if (replayResult.success) {
         return buildResult(testCase, "passed", "cache", startTime);
       }
-      // Cache stale — fall through to AI
     }
 
-    // Phase 2: AI agent execution (with retries)
     return this.executeWithAgent(testCase, baseUrl, startTime);
   }
 
@@ -56,7 +88,6 @@ export class TestExecutor {
     startTime: number,
   ): Promise<TestResult> {
     let lastError = "";
-
     let recordingDir: string | undefined;
 
     for (let attempt = 0; attempt < this.config.maxAttempts; attempt++) {
@@ -71,7 +102,6 @@ export class TestExecutor {
       lastError = agentResult.message;
     }
 
-    // All attempts exhausted — delete stale cache and fail
     await this.cacheManager.delete(testCase, baseUrl);
     return buildResult(testCase, "failed", "ai", startTime, lastError, recordingDir);
   }
