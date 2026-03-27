@@ -23,6 +23,11 @@ on:
         required: false
         type: number
         default: 30
+      setup-script:
+        description: "Optional shell script to run before OpenCheck (e.g. to template config files with env vars)"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -40,6 +45,12 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ inputs.bun-version }}
+
+      - name: Setup (user script)
+        if: inputs.setup-script != ''
+        working-directory: ${{ inputs.working-directory }}
+        shell: bash
+        run: ${{ inputs.setup-script }}
 
       - name: Run OpenCheck
         id: opencheck
