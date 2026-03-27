@@ -4,6 +4,8 @@ import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
+const originalEnv = { ...process.env };
+
 describe("loadConfig", () => {
   let tempDir: string;
 
@@ -12,6 +14,7 @@ describe("loadConfig", () => {
   });
 
   afterEach(async () => {
+    process.env = { ...originalEnv };
     await rm(tempDir, { recursive: true, force: true });
   });
 
@@ -106,5 +109,48 @@ tests:
     const config = await loadConfig(configPath);
     expect(config.sessionMode).toBe("persistent");
     expect(config.tests[0]?.name).toBe("#login");
+  });
+
+  it("expands ${ENV_VAR} references in string values", async () => {
+    process.env.TEST_BASE_URL = "http://staging.example.com";
+    const configPath = join(tempDir, "tests.yaml");
+    await writeFile(
+      configPath,
+      `baseUrl: "\${TEST_BASE_URL}"
+tests:
+  - case: "check login"
+`
+    );
+
+    const config = await loadConfig(configPath);
+    expect(config.baseUrl).toBe("http://staging.example.com");
+  });
+
+  it("expands env vars in test case strings", async () => {
+    process.env.AUTH_URL = "http://auth.example.com/login";
+    const configPath = join(tempDir, "tests.yaml");
+    await writeFile(
+      configPath,
+      `tests:
+  - case: "navigate to \${AUTH_URL} and verify redirect"
+`
+    );
+
+    const config = await loadConfig(configPath);
+    expect(config.tests[0]?.case).toBe("navigate to http://auth.example.com/login and verify redirect");
+  });
+
+  it("leaves undefined env vars unexpanded", async () => {
+    delete process.env.UNDEFINED_VAR;
+    const configPath = join(tempDir, "tests.yaml");
+    await writeFile(
+      configPath,
+      `tests:
+  - case: "test with \${UNDEFINED_VAR}"
+`
+    );
+
+    const config = await loadConfig(configPath);
+    expect(config.tests[0]?.case).toBe("test with ${UNDEFINED_VAR}");
   });
 });
