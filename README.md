@@ -273,6 +273,14 @@ Any provider supported by [LangChain's initChatModel](https://js.langchain.com/d
 | Config | Zod + YAML |
 | CLI | Commander.js |
 
+## Releasing
+
+1. Bump `version` in `package.json`
+2. Commit and push to `main`
+3. Tag and push: `git tag <version> && git push origin <version>`
+4. The `publish-npm.yml` workflow runs tests and publishes to npm via [trusted publishing](https://docs.npmjs.com/trusted-publishers) (OIDC — no token needed)
+5. Optionally create a GitHub Release for visibility: `gh release create <version> --title "v<version>" --generate-notes`
+
 ## License
 
 Business Source License 1.1 (`BUSL-1.1`).
