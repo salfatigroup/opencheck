@@ -23,6 +23,11 @@ on:
         required: false
         type: number
         default: 30
+      env-vars:
+        description: "Newline-separated KEY=VALUE pairs exported before OpenCheck runs (used for ${VAR} interpolation in config files)"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -40,6 +45,15 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ inputs.bun-version }}
+
+      - name: Export env vars
+        if: inputs.env-vars != ''
+        shell: bash
+        run: |
+          while IFS= read -r line; do
+            [[ -z "$line" || "$line" == \#* ]] && continue
+            echo "$line" >> "$GITHUB_ENV"
+          done <<< "${{ inputs.env-vars }}"
 
       - name: Run OpenCheck
         id: opencheck
