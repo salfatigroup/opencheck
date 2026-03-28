@@ -28,8 +28,18 @@ on:
         required: false
         type: string
         default: ""
+      aws-role-arn:
+        description: "AWS IAM role ARN for OIDC credential configuration (needed for Bedrock provider)"
+        required: false
+        type: string
+      aws-region:
+        description: "AWS region for credential configuration"
+        required: false
+        type: string
+        default: "us-east-1"
 
 permissions:
+  id-token: write
   contents: read
   pull-requests: write
 
@@ -54,6 +64,13 @@ jobs:
             [[ -z "$line" || "$line" == \#* ]] && continue
             echo "$line" >> "$GITHUB_ENV"
           done <<< "${{ inputs.env-vars }}"
+
+      - name: Configure AWS Credentials
+        if: inputs.aws-role-arn != ''
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ inputs.aws-role-arn }}
+          aws-region: ${{ inputs.aws-region }}
 
       - name: Run OpenCheck
         id: opencheck
