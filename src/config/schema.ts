@@ -8,6 +8,18 @@ export const TestCaseSchema = z.object({
   timeout: z.number().positive().optional(),
 });
 
+/** Schema for granular recording options */
+export const RecordingOptionsSchema = z.object({
+  trace: z.boolean().default(true),
+  video: z.boolean().default(true),
+});
+
+/** Recording can be a boolean (shorthand) or an object with trace/video flags */
+export const RecordingSchema = z.union([
+  z.boolean(),
+  RecordingOptionsSchema,
+]);
+
 /** Schema for the full OpenCheck configuration file */
 export const ConfigSchema = z.object({
   baseUrl: z.string().url().optional(),
@@ -20,6 +32,9 @@ export const ConfigSchema = z.object({
   model: z.string().default("claude-sonnet-4-5-20250929"),
   modelProvider: z.string().optional(),
   recursionLimit: z.number().int().positive().default(500),
-  recording: z.boolean().default(true),
+  recording: RecordingSchema.default(true),
+  bailOnFailure: z.boolean().default(false),
+  showTrace: z.boolean().default(true),
+  secrets: z.array(z.string()).default([]),
   tests: z.array(TestCaseSchema).min(1, "At least one test case is required"),
 });

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ConsoleReporter } from "../../../src/output/reporter.ts";
+import { SecretMasker } from "../../../src/output/secret-masker.ts";
 import type { ReportData } from "../../../src/output/types.ts";
 
 describe("ConsoleReporter", () => {
@@ -134,5 +135,46 @@ describe("ConsoleReporter", () => {
     const allOutput = consoleSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("\n");
     expect(allOutput).toContain("Element not found");
     expect(allOutput).toContain("Check selectors");
+  });
+});
+
+describe("ConsoleReporter with SecretMasker", () => {
+  let maskedReporter: ConsoleReporter;
+  let consoleSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const masker = new SecretMasker(["s3cret-password"]);
+    maskedReporter = new ConsoleReporter(masker);
+  });
+
+  it("masks secrets in onTestStart output", () => {
+    maskedReporter.onTestStart("login with s3cret-password");
+    const calls = consoleSpy.mock.calls;
+    const lastCall = String(calls[calls.length - 1]?.[0]);
+    expect(lastCall).not.toContain("s3cret-password");
+    expect(lastCall).toContain("***");
+    expect(lastCall).toContain("[RUNNING]");
+  });
+
+  it("masks secrets in onTestComplete output", () => {
+    maskedReporter.onTestComplete("enter s3cret-password", "passed", "ai", 100);
+    const calls = consoleSpy.mock.calls;
+    const lastCall = String(calls[calls.length - 1]?.[0]);
+    expect(lastCall).not.toContain("s3cret-password");
+    expect(lastCall).toContain("***");
+  });
+
+  it("masks secrets in error messages", () => {
+    maskedReporter.onTestComplete(
+      "test",
+      "failed",
+      "ai",
+      100,
+      "Failed: entered s3cret-password but got rejected",
+    );
+    const allOutput = consoleSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("\n");
+    expect(allOutput).not.toContain("s3cret-password");
+    expect(allOutput).toContain("***");
   });
 });

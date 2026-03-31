@@ -1,14 +1,27 @@
 import type { TestStatus, TestSource } from "../runner/types.ts";
 import type { Reporter, ReportData } from "./types.ts";
+import type { SecretMasker } from "./secret-masker.ts";
 
 /**
  * Console reporter that outputs test progress and summary to stdout.
  * Formats output for CI/CD readability with status prefixes and timing.
+ * Optionally masks secret values in all output.
  */
 export class ConsoleReporter implements Reporter {
+  private readonly masker?: SecretMasker;
+
+  constructor(masker?: SecretMasker) {
+    this.masker = masker;
+  }
+
+  /** Apply secret masking if a masker is configured */
+  private mask(text: string): string {
+    return this.masker ? this.masker.mask(text) : text;
+  }
+
   /** Called when a test case starts executing */
   onTestStart(testCase: string): void {
-    console.log(`  [RUNNING] ${testCase}`);
+    console.log(this.mask(`  [RUNNING] ${testCase}`));
   }
 
   /** Called when a test case completes */
@@ -21,11 +34,11 @@ export class ConsoleReporter implements Reporter {
   ): void {
     const prefix = status === "passed" ? "  [PASS]" : "  [FAIL]";
     const duration = formatDuration(durationMs);
-    console.log(`${prefix} ${testCase} (${source}, ${duration})`);
+    console.log(this.mask(`${prefix} ${testCase} (${source}, ${duration})`));
 
     if (status === "failed" && error) {
       for (const line of error.split("\n")) {
-        console.log(`         ${line}`);
+        console.log(this.mask(`         ${line}`));
       }
     }
   }

@@ -30,6 +30,9 @@ describe("CLI Pipeline (integration)", () => {
       model: "claude-sonnet-4-5-20250929",
       recursionLimit: 500,
       recording: false,
+      bailOnFailure: false,
+      showTrace: true,
+      secrets: [],
       tests: [
         { case: "check login" },
         { case: "check dashboard" },

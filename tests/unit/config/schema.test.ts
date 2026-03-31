@@ -259,4 +259,119 @@ describe("ConfigSchema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  describe("bailOnFailure", () => {
+    it("defaults bailOnFailure to false when omitted", () => {
+      const result = ConfigSchema.safeParse({
+        tests: [{ case: "test" }],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.bailOnFailure).toBe(false);
+      }
+    });
+
+    it("accepts bailOnFailure set to true", () => {
+      const result = ConfigSchema.safeParse({
+        bailOnFailure: true,
+        tests: [{ case: "test" }],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.bailOnFailure).toBe(true);
+      }
+    });
+  });
+
+  describe("showTrace", () => {
+    it("defaults showTrace to true when omitted", () => {
+      const result = ConfigSchema.safeParse({
+        tests: [{ case: "test" }],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.showTrace).toBe(true);
+      }
+    });
+
+    it("accepts showTrace set to false", () => {
+      const result = ConfigSchema.safeParse({
+        showTrace: false,
+        tests: [{ case: "test" }],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.showTrace).toBe(false);
+      }
+    });
+  });
+
+  describe("secrets", () => {
+    it("defaults secrets to an empty array when omitted", () => {
+      const result = ConfigSchema.safeParse({
+        tests: [{ case: "test" }],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.secrets).toEqual([]);
+      }
+    });
+
+    it("accepts an array of secret strings", () => {
+      const result = ConfigSchema.safeParse({
+        secrets: ["my-password", "my-token"],
+        tests: [{ case: "test" }],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.secrets).toEqual(["my-password", "my-token"]);
+      }
+    });
+  });
+
+  describe("recording as object", () => {
+    it("accepts recording as an object with trace and video", () => {
+      const result = ConfigSchema.safeParse({
+        recording: { trace: true, video: false },
+        tests: [{ case: "test" }],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.recording).toEqual({ trace: true, video: false });
+      }
+    });
+
+    it("applies defaults when recording object has missing fields", () => {
+      const result = ConfigSchema.safeParse({
+        recording: { trace: true },
+        tests: [{ case: "test" }],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.recording).toEqual({ trace: true, video: true });
+      }
+    });
+
+    it("accepts recording as boolean true (backwards compatible)", () => {
+      const result = ConfigSchema.safeParse({
+        recording: true,
+        tests: [{ case: "test" }],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.recording).toBe(true);
+      }
+    });
+
+    it("accepts recording as boolean false (backwards compatible)", () => {
+      const result = ConfigSchema.safeParse({
+        recording: false,
+        tests: [{ case: "test" }],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.recording).toBe(false);
+      }
+    });
+  });
 });

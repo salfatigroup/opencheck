@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { loadConfig } from "../../../src/config/loader.ts";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { loadConfig, interpolateEnvVars } from "../../../src/config/loader.ts";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -106,5 +106,66 @@ tests:
     const config = await loadConfig(configPath);
     expect(config.sessionMode).toBe("persistent");
     expect(config.tests[0]?.name).toBe("#login");
+  });
+
+  it("interpolates ${VAR} placeholders from environment variables", async () => {
+    process.env["OPENCHECK_TEST_URL"] = "http://staging.example.com";
+    const configPath = join(tempDir, "tests.yaml");
+    await writeFile(
+      configPath,
+      `baseUrl: "\${OPENCHECK_TEST_URL}"
+tests:
+  - case: "test against staging"
+`
+    );
+
+    const config = await loadConfig(configPath);
+    expect(config.baseUrl).toBe("http://staging.example.com");
+    delete process.env["OPENCHECK_TEST_URL"];
+  });
+
+  it("replaces unset env vars with empty string", async () => {
+    delete process.env["OPENCHECK_NONEXISTENT_VAR"];
+    const configPath = join(tempDir, "tests.yaml");
+    await writeFile(
+      configPath,
+      `tests:
+  - case: "hello \${OPENCHECK_NONEXISTENT_VAR}world"
+`
+    );
+
+    const config = await loadConfig(configPath);
+    expect(config.tests[0]?.case).toBe("hello world");
+  });
+});
+
+describe("interpolateEnvVars", () => {
+  it("replaces ${VAR} syntax", () => {
+    process.env["MY_VAR"] = "hello";
+    expect(interpolateEnvVars("${MY_VAR} world")).toBe("hello world");
+    delete process.env["MY_VAR"];
+  });
+
+  it("replaces $VAR syntax", () => {
+    process.env["MY_VAR"] = "hello";
+    expect(interpolateEnvVars("$MY_VAR world")).toBe("hello world");
+    delete process.env["MY_VAR"];
+  });
+
+  it("replaces unset variables with empty string", () => {
+    delete process.env["UNSET_VAR"];
+    expect(interpolateEnvVars("${UNSET_VAR}")).toBe("");
+  });
+
+  it("leaves text without variables unchanged", () => {
+    expect(interpolateEnvVars("no variables here")).toBe("no variables here");
+  });
+
+  it("handles multiple variables in one string", () => {
+    process.env["VAR_A"] = "foo";
+    process.env["VAR_B"] = "bar";
+    expect(interpolateEnvVars("${VAR_A}-${VAR_B}")).toBe("foo-bar");
+    delete process.env["VAR_A"];
+    delete process.env["VAR_B"];
   });
 });

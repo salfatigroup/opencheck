@@ -10,6 +10,7 @@ import { createMcpClient } from "./agent/mcp-client.ts";
 import { TestExecutor } from "./runner/test-executor.ts";
 import { TestRunner } from "./runner/test-runner.ts";
 import { ConsoleReporter } from "./output/reporter.ts";
+import { SecretMasker } from "./output/secret-masker.ts";
 import { StepReplayer } from "./cache/step-replayer.ts";
 import { generateFailureSummary } from "./output/failure-summary.ts";
 import { normalizeToolInput } from "./cache/tool-input.ts";
@@ -35,7 +36,8 @@ program
         mcpRuntimeOptions.userDataDir = persistentUserDataDir;
       }
 
-      const reporter = new ConsoleReporter();
+      const masker = config.secrets.length > 0 ? new SecretMasker(config.secrets) : undefined;
+      const reporter = new ConsoleReporter(masker);
       const cacheManager = new CacheManager(config.cacheDir);
       const agentFactory = new AgentFactory(config, mcpRuntimeOptions);
 

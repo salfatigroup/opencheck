@@ -35,7 +35,8 @@ async function assertFileExists(filePath: string): Promise<void> {
 async function readYamlFile(filePath: string): Promise<unknown> {
   try {
     const content = await readFile(filePath, "utf-8");
-    return parseYaml(content) as unknown;
+    const interpolated = interpolateEnvVars(content);
+    return parseYaml(interpolated) as unknown;
   } catch (error) {
     if (error instanceof ConfigLoadError) throw error;
     throw new ConfigLoadError(
@@ -43,6 +44,17 @@ async function readYamlFile(filePath: string): Promise<unknown> {
       error
     );
   }
+}
+
+/**
+ * Replace `${VAR_NAME}` placeholders with values from process.env.
+ * Unset variables are replaced with an empty string.
+ * Supports both `${VAR}` and `$VAR` (word-boundary) syntax.
+ */
+export function interpolateEnvVars(content: string): string {
+  return content
+    .replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_match, name: string) => process.env[name] ?? "")
+    .replace(/\$([A-Za-z_][A-Za-z0-9_]*)\b/g, (_match, name: string) => process.env[name] ?? "");
 }
 
 function validateConfig(raw: unknown): Config {

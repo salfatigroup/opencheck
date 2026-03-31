@@ -52,6 +52,10 @@ export class TestRunner {
         result.durationMs,
         result.error,
       );
+
+      if (this.config.bailOnFailure && result.status === "failed") {
+        break;
+      }
     }
 
     const runResult = aggregateResults(results, Date.now() - startTime);
