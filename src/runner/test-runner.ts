@@ -27,7 +27,8 @@ export class TestRunner {
 
     for (const test of this.config.tests) {
       const baseUrl = test.baseUrl ?? this.config.baseUrl ?? "";
-      this.reporter.onTestStart(test.case);
+      const displayName = test.name ?? truncateTestCase(test.case);
+      this.reporter.onTestStart(displayName);
 
       let result: TestResult;
       try {
@@ -37,19 +38,22 @@ export class TestRunner {
         const errorMessage = error instanceof Error ? error.message : String(error);
         result = {
           testCase: test.case,
+          displayName,
           status: "failed",
           source: "ai",
           durationMs: Date.now() - startTime,
           error: `Unexpected error (${errorName}): ${errorMessage}`,
         };
       }
+      result.displayName = displayName;
       results.push(result);
 
       this.reporter.onTestComplete(
-        result.testCase,
+        result.displayName,
         result.status,
         result.source,
         result.durationMs,
+        result.message,
         result.error,
       );
 
@@ -62,6 +66,15 @@ export class TestRunner {
     this.reporter.onRunComplete(runResult);
     return runResult;
   }
+}
+
+/** Truncate a test case string to a short display name */
+function truncateTestCase(testCase: string, maxLength = 80): string {
+  const singleLine = testCase.replace(/\s+/g, " ").trim();
+  if (singleLine.length <= maxLength) {
+    return singleLine;
+  }
+  return singleLine.slice(0, maxLength - 3) + "...";
 }
 
 function aggregateResults(results: TestResult[], totalDurationMs: number): RunResult {

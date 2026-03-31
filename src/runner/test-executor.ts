@@ -64,12 +64,12 @@ export class TestExecutor {
       recordingDir = agentResult.recordingDir;
 
       if (agentResult.outcome === "skipped") {
-        return buildResult(testCase, "skipped", "ai", startTime, undefined, recordingDir);
+        return buildResult(testCase, "skipped", "ai", startTime, undefined, agentResult.message, recordingDir);
       }
 
       if (agentResult.outcome === "passed") {
         await this.cacheManager.save(testCase, baseUrl, agentResult.steps);
-        return buildResult(testCase, "passed", "ai", startTime, undefined, recordingDir);
+        return buildResult(testCase, "passed", "ai", startTime, undefined, agentResult.message, recordingDir);
       }
 
       lastError = agentResult.message;
@@ -77,7 +77,7 @@ export class TestExecutor {
 
     // All attempts exhausted — delete stale cache and fail
     await this.cacheManager.delete(testCase, baseUrl);
-    return buildResult(testCase, "failed", "ai", startTime, lastError, recordingDir);
+    return buildResult(testCase, "failed", "ai", startTime, lastError, lastError, recordingDir);
   }
 }
 
@@ -87,14 +87,17 @@ function buildResult(
   source: "cache" | "ai",
   startTime: number,
   error?: string,
+  message?: string,
   recordingDir?: string,
 ): TestResult {
   return {
     testCase,
+    displayName: testCase,
     status,
     source,
     durationMs: Date.now() - startTime,
     ...(error ? { error } : {}),
+    ...(message ? { message } : {}),
     ...(recordingDir ? { recordingDir } : {}),
   };
 }

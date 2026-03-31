@@ -45,12 +45,14 @@ describe("TestRunner", () => {
     mockExecute
       .mockResolvedValueOnce({
         testCase: "check login",
+        displayName: "check login",
         status: "passed",
         source: "cache",
         durationMs: 100,
       })
       .mockResolvedValueOnce({
         testCase: "check dashboard",
+        displayName: "check dashboard",
         status: "passed",
         source: "ai",
         durationMs: 200,
@@ -69,12 +71,14 @@ describe("TestRunner", () => {
     mockExecute
       .mockResolvedValueOnce({
         testCase: "check login",
+        displayName: "check login",
         status: "passed",
         source: "ai",
         durationMs: 100,
       })
       .mockResolvedValueOnce({
         testCase: "check dashboard",
+        displayName: "check dashboard",
         status: "failed",
         source: "ai",
         durationMs: 200,
@@ -105,6 +109,7 @@ describe("TestRunner", () => {
   it("calls reporter hooks during execution", async () => {
     mockExecute.mockResolvedValue({
       testCase: "check login",
+      displayName: "check login",
       status: "passed",
       source: "ai",
       durationMs: 100,
@@ -130,6 +135,7 @@ describe("TestRunner", () => {
 
     mockExecute.mockResolvedValue({
       testCase: "",
+      displayName: "",
       status: "passed",
       source: "ai",
       durationMs: 50,
@@ -151,6 +157,7 @@ describe("TestRunner", () => {
   it("calculates total duration", async () => {
     mockExecute.mockResolvedValue({
       testCase: "check login",
+      displayName: "check login",
       status: "passed",
       source: "ai",
       durationMs: 100,
@@ -171,6 +178,7 @@ describe("TestRunner", () => {
       .mockRejectedValueOnce(new Error("MCP server crashed"))
       .mockResolvedValueOnce({
         testCase: "check dashboard",
+        displayName: "check dashboard",
         status: "passed",
         source: "ai",
         durationMs: 200,
@@ -192,6 +200,7 @@ describe("TestRunner", () => {
       .mockRejectedValueOnce(new Error("Crash"))
       .mockResolvedValueOnce({
         testCase: "check dashboard",
+        displayName: "check dashboard",
         status: "passed",
         source: "ai",
         durationMs: 100,
@@ -210,6 +219,7 @@ describe("TestRunner", () => {
       mockExecute
         .mockResolvedValueOnce({
           testCase: "check login",
+          displayName: "check login",
           status: "failed",
           source: "ai",
           durationMs: 100,
@@ -217,6 +227,7 @@ describe("TestRunner", () => {
         })
         .mockResolvedValueOnce({
           testCase: "check dashboard",
+          displayName: "check dashboard",
           status: "passed",
           source: "ai",
           durationMs: 200,
@@ -236,12 +247,14 @@ describe("TestRunner", () => {
       mockExecute
         .mockResolvedValueOnce({
           testCase: "check login",
+          displayName: "check login",
           status: "passed",
           source: "ai",
           durationMs: 100,
         })
         .mockResolvedValueOnce({
           testCase: "check dashboard",
+          displayName: "check dashboard",
           status: "passed",
           source: "ai",
           durationMs: 200,
@@ -260,6 +273,7 @@ describe("TestRunner", () => {
         .mockRejectedValueOnce(new Error("Crash"))
         .mockResolvedValueOnce({
           testCase: "check dashboard",
+          displayName: "check dashboard",
           status: "passed",
           source: "ai",
           durationMs: 200,

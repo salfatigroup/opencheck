@@ -46,9 +46,9 @@ describe("ConsoleReporter", () => {
   it("prints summary with pass/fail/cached counts", () => {
     const data: ReportData = {
       results: [
-        { testCase: "test1", status: "passed", source: "cache", durationMs: 100 },
-        { testCase: "test2", status: "passed", source: "ai", durationMs: 200 },
-        { testCase: "test3", status: "failed", source: "ai", durationMs: 300, error: "err" },
+        { testCase: "test1", displayName: "test1", status: "passed", source: "cache", durationMs: 100 },
+        { testCase: "test2", displayName: "test2", status: "passed", source: "ai", durationMs: 200 },
+        { testCase: "test3", displayName: "test3", status: "failed", source: "ai", durationMs: 300, error: "err" },
       ],
       totalDurationMs: 600,
       passed: 2,
@@ -106,7 +106,7 @@ describe("ConsoleReporter", () => {
   it("shows troubleshooting tips when tests fail", () => {
     const data: ReportData = {
       results: [
-        { testCase: "test1", status: "failed", source: "ai", durationMs: 300, error: "some error" },
+        { testCase: "test1", displayName: "test1", status: "failed", source: "ai", durationMs: 300, error: "some error" },
       ],
       totalDurationMs: 300,
       passed: 0,
@@ -125,7 +125,7 @@ describe("ConsoleReporter", () => {
   it("shows error details in summary for failed tests", () => {
     const data: ReportData = {
       results: [
-        { testCase: "test1", status: "failed", source: "ai", durationMs: 300, error: "TEST_FAILED: Element not found\n  Suggestion: Check selectors." },
+        { testCase: "test1", displayName: "test1", status: "failed", source: "ai", durationMs: 300, error: "TEST_FAILED: Element not found\n  Suggestion: Check selectors." },
       ],
       totalDurationMs: 300,
       passed: 0,

@@ -20,23 +20,30 @@ export class ConsoleReporter implements Reporter {
   }
 
   /** Called when a test case starts executing */
-  onTestStart(testCase: string): void {
-    console.log(this.mask(`  [RUNNING] ${testCase}`));
+  onTestStart(displayName: string): void {
+    console.log(this.mask(`  [RUNNING] ${displayName}`));
   }
 
   /** Called when a test case completes */
   onTestComplete(
-    testCase: string,
+    displayName: string,
     status: TestStatus,
     source: TestSource,
     durationMs: number,
+    message?: string,
     error?: string,
   ): void {
     const prefix = status === "skipped" ? "  [SKIP]" : status === "passed" ? "  [PASS]" : "  [FAIL]";
     const duration = formatDuration(durationMs);
-    console.log(this.mask(`${prefix} ${testCase} (${source}, ${duration})`));
+    console.log(this.mask(`${prefix} ${displayName} (${source}, ${duration})`));
 
-    if (status === "failed" && error) {
+    if (message) {
+      for (const line of message.split("\n")) {
+        console.log(this.mask(`         ${line}`));
+      }
+    }
+
+    if (status === "failed" && error && error !== message) {
       for (const line of error.split("\n")) {
         console.log(this.mask(`         ${line}`));
       }
@@ -62,7 +69,7 @@ export class ConsoleReporter implements Reporter {
       console.log("  Failed tests:");
       for (const result of data.results) {
         if (result.status === "failed") {
-          console.log(this.mask(`    ✗ ${result.testCase}`));
+          console.log(this.mask(`    ✗ ${result.displayName}`));
           if (result.error) {
             for (const line of result.error.split("\n")) {
               console.log(this.mask(`      ${line}`));
@@ -85,8 +92,8 @@ export class ConsoleReporter implements Reporter {
       console.log("  Recordings");
       console.log("━".repeat(50));
       for (const result of recorded) {
-        const icon = result.status === "passed" ? "✓" : "✗";
-        console.log(`  ${icon} ${result.testCase}`);
+        const icon = result.status === "passed" ? "✓" : result.status === "skipped" ? "○" : "✗";
+        console.log(`  ${icon} ${result.displayName}`);
         console.log(`    Trace: ${result.recordingDir}/trace.zip`);
         console.log(`    Video: ${result.recordingDir}/video.webm`);
       }

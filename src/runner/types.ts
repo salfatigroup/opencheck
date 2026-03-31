@@ -7,10 +7,12 @@ export type TestSource = "cache" | "ai";
 /** Result of executing a single test case */
 export interface TestResult {
   testCase: string;
+  displayName: string;
   status: TestStatus;
   source: TestSource;
   durationMs: number;
   error?: string;
+  message?: string;
   recordingDir?: string;
 }
 
