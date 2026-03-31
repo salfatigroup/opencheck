@@ -306,6 +306,36 @@ describe("ConfigSchema", () => {
     });
   });
 
+  describe("viewportSize", () => {
+    it.each([
+      { input: undefined, expected: "1280x720", desc: "defaults to 1280x720 when omitted" },
+      { input: "1920x1080", expected: "1920x1080", desc: "accepts valid WIDTHxHEIGHT" },
+      { input: "800x600", expected: "800x600", desc: "accepts smaller viewport" },
+    ])("$desc", ({ input, expected }) => {
+      const result = ConfigSchema.safeParse({
+        ...(input !== undefined ? { viewportSize: input } : {}),
+        tests: [{ case: "test" }],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.viewportSize).toBe(expected);
+      }
+    });
+
+    it.each([
+      { input: "not-a-size", desc: "rejects non WIDTHxHEIGHT format" },
+      { input: "1280", desc: "rejects missing height" },
+      { input: "x720", desc: "rejects missing width" },
+      { input: "1280X720", desc: "rejects uppercase X" },
+    ])("$desc", ({ input }) => {
+      const result = ConfigSchema.safeParse({
+        viewportSize: input,
+        tests: [{ case: "test" }],
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe("secrets", () => {
     it("defaults secrets to an empty array when omitted", () => {
       const result = ConfigSchema.safeParse({

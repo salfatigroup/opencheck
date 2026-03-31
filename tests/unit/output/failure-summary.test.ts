@@ -26,6 +26,7 @@ describe("generateFailureSummary", () => {
     recording: false,
     bailOnFailure: false,
     showTrace: true,
+    viewportSize: "1280x720",
     secrets: [],
     tests: [{ case: "test" }],
   };

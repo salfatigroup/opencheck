@@ -16,6 +16,7 @@ describe("buildMcpServerConfig", () => {
     recording: false,
     bailOnFailure: false,
     showTrace: true,
+    viewportSize: "1280x720",
     secrets: [],
     tests: [{ case: "check login" }],
   };
@@ -54,6 +55,16 @@ describe("buildMcpServerConfig", () => {
   it("uses the specified browser variant", () => {
     const config = buildMcpServerConfig({ ...baseConfig, browser: "firefox" });
     expect(config.mcpServers["playwright"]?.args).toContain("--browser=firefox");
+  });
+
+  it("passes default viewport size", () => {
+    const config = buildMcpServerConfig(baseConfig);
+    expect(config.mcpServers["playwright"]?.args).toContain("--viewport-size=1280x720");
+  });
+
+  it("passes custom viewport size", () => {
+    const config = buildMcpServerConfig({ ...baseConfig, viewportSize: "1920x1080" });
+    expect(config.mcpServers["playwright"]?.args).toContain("--viewport-size=1920x1080");
   });
 
   it("passes user data dir for persistent sessions", () => {

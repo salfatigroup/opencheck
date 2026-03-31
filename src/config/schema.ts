@@ -35,6 +35,7 @@ export const ConfigSchema = z.object({
   recording: RecordingSchema.default(true),
   bailOnFailure: z.boolean().default(false),
   showTrace: z.boolean().default(true),
+  viewportSize: z.string().regex(/^\d+x\d+$/, "Must be WIDTHxHEIGHT, e.g. '1280x720'").default("1280x720"),
   secrets: z.array(z.string()).default([]),
   tests: z.array(TestCaseSchema).min(1, "At least one test case is required"),
 });

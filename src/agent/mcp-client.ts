@@ -69,6 +69,7 @@ export function buildMcpServerConfig(
   }
 
   playwrightArgs.push(`--browser=${config.browser}`);
+  playwrightArgs.push(`--viewport-size=${config.viewportSize}`);
 
   const rec = resolveRecording(config.recording);
   if (rec.trace || rec.video) {

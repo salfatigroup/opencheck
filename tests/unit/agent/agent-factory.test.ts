@@ -66,6 +66,7 @@ describe("AgentFactory", () => {
     recording: false,
     bailOnFailure: false,
     showTrace: true,
+    viewportSize: "1280x720",
     secrets: [],
     tests: [{ case: "check login is working" }],
   };
