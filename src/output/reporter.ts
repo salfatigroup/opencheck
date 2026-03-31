@@ -61,10 +61,10 @@ export class ConsoleReporter implements Reporter {
       console.log("  Failed tests:");
       for (const result of data.results) {
         if (result.status === "failed") {
-          console.log(`    ✗ ${result.testCase}`);
+          console.log(this.mask(`    ✗ ${result.testCase}`));
           if (result.error) {
             for (const line of result.error.split("\n")) {
-              console.log(`      ${line}`);
+              console.log(this.mask(`      ${line}`));
             }
           }
         }
