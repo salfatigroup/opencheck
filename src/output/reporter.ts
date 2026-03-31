@@ -32,7 +32,7 @@ export class ConsoleReporter implements Reporter {
     durationMs: number,
     error?: string,
   ): void {
-    const prefix = status === "passed" ? "  [PASS]" : "  [FAIL]";
+    const prefix = status === "skipped" ? "  [SKIP]" : status === "passed" ? "  [PASS]" : "  [FAIL]";
     const duration = formatDuration(durationMs);
     console.log(this.mask(`${prefix} ${testCase} (${source}, ${duration})`));
 
@@ -52,6 +52,7 @@ export class ConsoleReporter implements Reporter {
     console.log(`  Total:   ${data.results.length}`);
     console.log(`  Passed:  ${data.passed}`);
     console.log(`  Failed:  ${data.failed}`);
+    console.log(`  Skipped: ${data.skipped}`);
     console.log(`  Cached:  ${data.cached}`);
     console.log(`  Time:    ${formatDuration(data.totalDurationMs)}`);
     console.log("━".repeat(50));

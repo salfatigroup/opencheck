@@ -52,6 +52,7 @@ describe("CLI Pipeline (integration)", () => {
   it("runs full pipeline: AI pass → cache saved → exit 0", async () => {
     mockExecuteTest.mockResolvedValue({
       passed: true,
+      outcome: "passed",
       steps: [{ toolName: "browser_navigate", toolInput: { url: "http://localhost:3000" } }],
       message: "TEST_PASSED: works",
     });
@@ -100,18 +101,21 @@ describe("CLI Pipeline (integration)", () => {
     mockExecuteTest
       .mockResolvedValueOnce({
         passed: true,
+        outcome: "passed",
         steps: [{ toolName: "browser_navigate", toolInput: { url: "http://localhost:3000" } }],
         message: "TEST_PASSED: login ok",
       })
       // First attempt for dashboard fails
       .mockResolvedValueOnce({
         passed: false,
+        outcome: "failed",
         steps: [],
         message: "TEST_FAILED: dashboard broken",
       })
       // Second attempt also fails (maxAttempts=2)
       .mockResolvedValueOnce({
         passed: false,
+        outcome: "failed",
         steps: [],
         message: "TEST_FAILED: still broken",
       });
@@ -136,6 +140,7 @@ describe("CLI Pipeline (integration)", () => {
 
     mockExecuteTest.mockResolvedValue({
       passed: true,
+      outcome: "passed",
       steps: [],
       message: "TEST_PASSED: ok",
     });

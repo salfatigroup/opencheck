@@ -48,13 +48,32 @@ async function readYamlFile(filePath: string): Promise<unknown> {
 
 /**
  * Replace `${VAR_NAME}` placeholders with values from process.env.
- * Unset variables are replaced with an empty string.
+ * Throws ConfigLoadError if any referenced variable is not set.
  * Supports both `${VAR}` and `$VAR` (word-boundary) syntax.
  */
 export function interpolateEnvVars(content: string): string {
-  return content
-    .replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_match, name: string) => process.env[name] ?? "")
-    .replace(/\$([A-Za-z_][A-Za-z0-9_]*)\b/g, (_match, name: string) => process.env[name] ?? "");
+  const missing = new Set<string>();
+
+  const result = content
+    .replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_match, name: string) => {
+      const value = process.env[name];
+      if (value === undefined) missing.add(name);
+      return value ?? "";
+    })
+    .replace(/\$([A-Za-z_][A-Za-z0-9_]*)\b/g, (_match, name: string) => {
+      const value = process.env[name];
+      if (value === undefined) missing.add(name);
+      return value ?? "";
+    });
+
+  if (missing.size > 0) {
+    const vars = Array.from(missing).sort().join(", ");
+    throw new ConfigLoadError(
+      `Unset environment variable${missing.size > 1 ? "s" : ""} referenced in config: ${vars}`,
+    );
+  }
+
+  return result;
 }
 
 function validateConfig(raw: unknown): Config {

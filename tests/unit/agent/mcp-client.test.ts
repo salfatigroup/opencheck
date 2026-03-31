@@ -122,9 +122,10 @@ describe("buildMcpServerConfig", () => {
     expect(args.some((a) => a.startsWith("--save-video="))).toBe(false);
   });
 
-  it("includes --no-show-trace when showTrace is false", () => {
+  it("does not include --no-show-trace when showTrace is false (not yet supported by @playwright/mcp)", () => {
     const config = buildMcpServerConfig({ ...baseConfig, showTrace: false });
-    expect(config.mcpServers["playwright"]!.args).toContain("--no-show-trace");
+    // --no-show-trace is not yet supported by @playwright/mcp, so config is accepted but flag is not emitted
+    expect(config.mcpServers["playwright"]!.args).not.toContain("--no-show-trace");
   });
 
   it("omits --no-show-trace when showTrace is true (default)", () => {

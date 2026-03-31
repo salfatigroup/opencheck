@@ -70,6 +70,7 @@ function aggregateResults(results: TestResult[], totalDurationMs: number): RunRe
     totalDurationMs,
     passed: results.filter((r) => r.status === "passed").length,
     failed: results.filter((r) => r.status === "failed").length,
+    skipped: results.filter((r) => r.status === "skipped").length,
     cached: results.filter((r) => r.source === "cache" && r.status === "passed").length,
   };
 }

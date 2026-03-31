@@ -71,6 +71,7 @@ describe("TestExecutor", () => {
   it("falls back to AI when no cache exists", async () => {
     mockExecuteTest.mockResolvedValue({
       passed: true,
+      outcome: "passed",
       steps: [{ toolName: "browser_navigate", toolInput: { url: "http://localhost:3000" } }],
       message: "TEST_PASSED: Login works",
     });
@@ -85,6 +86,7 @@ describe("TestExecutor", () => {
   it("saves cache on AI success", async () => {
     mockExecuteTest.mockResolvedValue({
       passed: true,
+      outcome: "passed",
       steps: [{ toolName: "browser_navigate", toolInput: { url: "http://localhost:3000" } }],
       message: "TEST_PASSED: Login works",
     });
@@ -103,6 +105,7 @@ describe("TestExecutor", () => {
 
     mockExecuteTest.mockResolvedValue({
       passed: true,
+      outcome: "passed",
       steps: [{ toolName: "browser_navigate", toolInput: { url: "http://localhost:3000/new" } }],
       message: "TEST_PASSED: Login works after change",
     });
@@ -127,6 +130,7 @@ describe("TestExecutor", () => {
 
     mockExecuteTest.mockResolvedValue({
       passed: true,
+      outcome: "passed",
       steps: [{ toolName: "browser_navigate", toolInput: { url: "http://localhost:3000/v2" } }],
       message: "TEST_PASSED: Updated",
     });
@@ -151,6 +155,7 @@ describe("TestExecutor", () => {
 
     mockExecuteTest.mockResolvedValue({
       passed: false,
+      outcome: "failed",
       steps: [],
       message: "TEST_FAILED: Could not find login form",
     });
@@ -172,6 +177,7 @@ describe("TestExecutor", () => {
   it("returns failure after all AI attempts exhausted", async () => {
     mockExecuteTest.mockResolvedValue({
       passed: false,
+      outcome: "failed",
       steps: [],
       message: "TEST_FAILED: Cannot complete test",
     });

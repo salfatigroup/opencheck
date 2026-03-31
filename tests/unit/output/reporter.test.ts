@@ -53,6 +53,7 @@ describe("ConsoleReporter", () => {
       totalDurationMs: 600,
       passed: 2,
       failed: 1,
+      skipped: 0,
       cached: 1,
     };
 
@@ -69,6 +70,7 @@ describe("ConsoleReporter", () => {
       totalDurationMs: 1500,
       passed: 0,
       failed: 0,
+      skipped: 0,
       cached: 0,
     };
 
@@ -109,6 +111,7 @@ describe("ConsoleReporter", () => {
       totalDurationMs: 300,
       passed: 0,
       failed: 1,
+      skipped: 0,
       cached: 0,
     };
 
@@ -127,6 +130,7 @@ describe("ConsoleReporter", () => {
       totalDurationMs: 300,
       passed: 0,
       failed: 1,
+      skipped: 0,
       cached: 0,
     };
 

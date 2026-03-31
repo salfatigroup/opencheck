@@ -75,6 +75,7 @@ export class AgentFactory {
       "4. After completing the test, respond with EXACTLY one of:",
       '   - "TEST_PASSED: <brief explanation>"',
       '   - "TEST_FAILED: <brief explanation of what went wrong>"',
+      '   - "TEST_SKIPPED: <brief explanation of why the test was skipped>"',
       "",
       "Be methodical. If something doesn't work, try alternative approaches before declaring failure.",
     ].join("\n");
@@ -134,9 +135,12 @@ export class AgentFactory {
 
       const lastMessage = extractLastMessage(result);
       const passed = lastMessage.includes("TEST_PASSED");
+      const skipped = lastMessage.includes("TEST_SKIPPED");
+      const outcome = skipped ? "skipped" as const : passed ? "passed" as const : "failed" as const;
 
       return {
         passed,
+        outcome,
         steps: recorder.getSteps(),
         message: lastMessage,
         recordingDir,
@@ -144,6 +148,7 @@ export class AgentFactory {
     } catch (error) {
       return {
         passed: false,
+        outcome: "failed",
         steps: recorder.getSteps(),
         message: formatAgentError(error, testCase, this.config.recursionLimit),
       };

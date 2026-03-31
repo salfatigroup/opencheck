@@ -63,7 +63,11 @@ export class TestExecutor {
       const agentResult = await this.agentFactory.executeTest(testCase, baseUrl);
       recordingDir = agentResult.recordingDir;
 
-      if (agentResult.passed) {
+      if (agentResult.outcome === "skipped") {
+        return buildResult(testCase, "skipped", "ai", startTime, undefined, recordingDir);
+      }
+
+      if (agentResult.outcome === "passed") {
         await this.cacheManager.save(testCase, baseUrl, agentResult.steps);
         return buildResult(testCase, "passed", "ai", startTime, undefined, recordingDir);
       }
@@ -79,7 +83,7 @@ export class TestExecutor {
 
 function buildResult(
   testCase: string,
-  status: "passed" | "failed",
+  status: "passed" | "failed" | "skipped",
   source: "cache" | "ai",
   startTime: number,
   error?: string,

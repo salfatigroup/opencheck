@@ -1,8 +1,13 @@
 import type { CachedStep } from "../cache/types.ts";
 
+/** Outcome of an AI agent test execution */
+export type AgentOutcome = "passed" | "failed" | "skipped";
+
 /** Result of an AI agent test execution */
 export interface AgentExecutionResult {
+  /** @deprecated Use `outcome` instead */
   passed: boolean;
+  outcome: AgentOutcome;
   steps: CachedStep[];
   message: string;
   recordingDir?: string;

@@ -1,5 +1,5 @@
 /** Status of a completed test */
-export type TestStatus = "passed" | "failed";
+export type TestStatus = "passed" | "failed" | "skipped";
 
 /** Source of the test result */
 export type TestSource = "cache" | "ai";
@@ -20,5 +20,6 @@ export interface RunResult {
   totalDurationMs: number;
   passed: number;
   failed: number;
+  skipped: number;
   cached: number;
 }

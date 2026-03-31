@@ -124,7 +124,7 @@ tests:
     delete process.env["OPENCHECK_TEST_URL"];
   });
 
-  it("replaces unset env vars with empty string", async () => {
+  it("throws ConfigLoadError when config references unset env vars", async () => {
     delete process.env["OPENCHECK_NONEXISTENT_VAR"];
     const configPath = join(tempDir, "tests.yaml");
     await writeFile(
@@ -134,8 +134,8 @@ tests:
 `
     );
 
-    const config = await loadConfig(configPath);
-    expect(config.tests[0]?.case).toBe("hello world");
+    await expect(loadConfig(configPath)).rejects.toThrow("Unset environment variable");
+    await expect(loadConfig(configPath)).rejects.toThrow("OPENCHECK_NONEXISTENT_VAR");
   });
 });
 
@@ -152,9 +152,16 @@ describe("interpolateEnvVars", () => {
     delete process.env["MY_VAR"];
   });
 
-  it("replaces unset variables with empty string", () => {
+  it("throws ConfigLoadError for unset variables", () => {
     delete process.env["UNSET_VAR"];
-    expect(interpolateEnvVars("${UNSET_VAR}")).toBe("");
+    expect(() => interpolateEnvVars("${UNSET_VAR}")).toThrow("Unset environment variable");
+    expect(() => interpolateEnvVars("${UNSET_VAR}")).toThrow("UNSET_VAR");
+  });
+
+  it("throws ConfigLoadError listing all unset variables", () => {
+    delete process.env["MISSING_A"];
+    delete process.env["MISSING_B"];
+    expect(() => interpolateEnvVars("${MISSING_A} and ${MISSING_B}")).toThrow("MISSING_A, MISSING_B");
   });
 
   it("leaves text without variables unchanged", () => {
