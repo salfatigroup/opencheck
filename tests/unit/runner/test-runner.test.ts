@@ -23,6 +23,9 @@ describe("TestRunner", () => {
       model: "claude-sonnet-4-5-20250929",
       recursionLimit: 500,
       recording: false,
+      bailOnFailure: false,
+    viewportSize: "1280x720",
+      secrets: [],
       tests: [
         { case: "check login" },
         { case: "check dashboard" },
@@ -42,12 +45,14 @@ describe("TestRunner", () => {
     mockExecute
       .mockResolvedValueOnce({
         testCase: "check login",
+        displayName: "check login",
         status: "passed",
         source: "cache",
         durationMs: 100,
       })
       .mockResolvedValueOnce({
         testCase: "check dashboard",
+        displayName: "check dashboard",
         status: "passed",
         source: "ai",
         durationMs: 200,
@@ -66,12 +71,14 @@ describe("TestRunner", () => {
     mockExecute
       .mockResolvedValueOnce({
         testCase: "check login",
+        displayName: "check login",
         status: "passed",
         source: "ai",
         durationMs: 100,
       })
       .mockResolvedValueOnce({
         testCase: "check dashboard",
+        displayName: "check dashboard",
         status: "failed",
         source: "ai",
         durationMs: 200,
@@ -102,6 +109,7 @@ describe("TestRunner", () => {
   it("calls reporter hooks during execution", async () => {
     mockExecute.mockResolvedValue({
       testCase: "check login",
+      displayName: "check login",
       status: "passed",
       source: "ai",
       durationMs: 100,
@@ -127,6 +135,7 @@ describe("TestRunner", () => {
 
     mockExecute.mockResolvedValue({
       testCase: "",
+      displayName: "",
       status: "passed",
       source: "ai",
       durationMs: 50,
@@ -148,6 +157,7 @@ describe("TestRunner", () => {
   it("calculates total duration", async () => {
     mockExecute.mockResolvedValue({
       testCase: "check login",
+      displayName: "check login",
       status: "passed",
       source: "ai",
       durationMs: 100,
@@ -168,6 +178,7 @@ describe("TestRunner", () => {
       .mockRejectedValueOnce(new Error("MCP server crashed"))
       .mockResolvedValueOnce({
         testCase: "check dashboard",
+        displayName: "check dashboard",
         status: "passed",
         source: "ai",
         durationMs: 200,
@@ -189,6 +200,7 @@ describe("TestRunner", () => {
       .mockRejectedValueOnce(new Error("Crash"))
       .mockResolvedValueOnce({
         testCase: "check dashboard",
+        displayName: "check dashboard",
         status: "passed",
         source: "ai",
         durationMs: 100,
@@ -199,5 +211,80 @@ describe("TestRunner", () => {
 
     expect(mockExecute).toHaveBeenCalledTimes(2);
     expect(mockReporter.onTestComplete).toHaveBeenCalledTimes(2);
+  });
+
+  describe("bailOnFailure", () => {
+    it("stops after first failure when bailOnFailure is true", async () => {
+      const bailConfig = { ...config, bailOnFailure: true };
+      mockExecute
+        .mockResolvedValueOnce({
+          testCase: "check login",
+          displayName: "check login",
+          status: "failed",
+          source: "ai",
+          durationMs: 100,
+          error: "Login failed",
+        })
+        .mockResolvedValueOnce({
+          testCase: "check dashboard",
+          displayName: "check dashboard",
+          status: "passed",
+          source: "ai",
+          durationMs: 200,
+        });
+
+      const runner = new TestRunner(bailConfig, mockReporter, mockExecute);
+      const runResult = await runner.run();
+
+      expect(mockExecute).toHaveBeenCalledTimes(1);
+      expect(runResult.results).toHaveLength(1);
+      expect(runResult.failed).toBe(1);
+      expect(runResult.passed).toBe(0);
+    });
+
+    it("runs all tests when bailOnFailure is true but all pass", async () => {
+      const bailConfig = { ...config, bailOnFailure: true };
+      mockExecute
+        .mockResolvedValueOnce({
+          testCase: "check login",
+          displayName: "check login",
+          status: "passed",
+          source: "ai",
+          durationMs: 100,
+        })
+        .mockResolvedValueOnce({
+          testCase: "check dashboard",
+          displayName: "check dashboard",
+          status: "passed",
+          source: "ai",
+          durationMs: 200,
+        });
+
+      const runner = new TestRunner(bailConfig, mockReporter, mockExecute);
+      const runResult = await runner.run();
+
+      expect(mockExecute).toHaveBeenCalledTimes(2);
+      expect(runResult.passed).toBe(2);
+    });
+
+    it("stops after thrown error when bailOnFailure is true", async () => {
+      const bailConfig = { ...config, bailOnFailure: true };
+      mockExecute
+        .mockRejectedValueOnce(new Error("Crash"))
+        .mockResolvedValueOnce({
+          testCase: "check dashboard",
+          displayName: "check dashboard",
+          status: "passed",
+          source: "ai",
+          durationMs: 200,
+        });
+
+      const runner = new TestRunner(bailConfig, mockReporter, mockExecute);
+      const runResult = await runner.run();
+
+      expect(mockExecute).toHaveBeenCalledTimes(1);
+      expect(runResult.results).toHaveLength(1);
+      expect(runResult.failed).toBe(1);
+    });
   });
 });

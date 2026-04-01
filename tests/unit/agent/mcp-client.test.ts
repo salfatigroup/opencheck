@@ -14,6 +14,9 @@ describe("buildMcpServerConfig", () => {
     model: "claude-sonnet-4-5-20250929",
     recursionLimit: 500,
     recording: false,
+    bailOnFailure: false,
+    viewportSize: "1280x720",
+    secrets: [],
     tests: [{ case: "check login" }],
   };
 
@@ -53,6 +56,16 @@ describe("buildMcpServerConfig", () => {
     expect(config.mcpServers["playwright"]?.args).toContain("--browser=firefox");
   });
 
+  it("passes default viewport size", () => {
+    const config = buildMcpServerConfig(baseConfig);
+    expect(config.mcpServers["playwright"]?.args).toContain("--viewport-size=1280x720");
+  });
+
+  it("passes custom viewport size", () => {
+    const config = buildMcpServerConfig({ ...baseConfig, viewportSize: "1920x1080" });
+    expect(config.mcpServers["playwright"]?.args).toContain("--viewport-size=1920x1080");
+  });
+
   it("passes user data dir for persistent sessions", () => {
     const config = buildMcpServerConfig(
       { ...baseConfig, sessionMode: "persistent" },
@@ -90,4 +103,33 @@ describe("buildMcpServerConfig", () => {
     expect(args).toContain("--output-dir");
     expect(args).toContain("/tmp/recordings");
   });
+
+  it("includes only trace when recording is { trace: true, video: false }", () => {
+    const config = buildMcpServerConfig({ ...baseConfig, recording: { trace: true, video: false } });
+    const args = config.mcpServers["playwright"]!.args;
+    expect(args).toContain("--save-trace");
+    expect(args.some((a) => a.startsWith("--save-video="))).toBe(false);
+  });
+
+  it("includes only video when recording is { trace: false, video: true }", () => {
+    const config = buildMcpServerConfig({ ...baseConfig, recording: { trace: false, video: true } });
+    const args = config.mcpServers["playwright"]!.args;
+    expect(args).not.toContain("--save-trace");
+    expect(args.some((a) => a.startsWith("--save-video="))).toBe(true);
+  });
+
+  it("includes both trace and video when recording is { trace: true, video: true }", () => {
+    const config = buildMcpServerConfig({ ...baseConfig, recording: { trace: true, video: true } });
+    const args = config.mcpServers["playwright"]!.args;
+    expect(args).toContain("--save-trace");
+    expect(args.some((a) => a.startsWith("--save-video="))).toBe(true);
+  });
+
+  it("omits recording flags when recording is { trace: false, video: false }", () => {
+    const config = buildMcpServerConfig({ ...baseConfig, recording: { trace: false, video: false } });
+    const args = config.mcpServers["playwright"]!.args;
+    expect(args).not.toContain("--save-trace");
+    expect(args.some((a) => a.startsWith("--save-video="))).toBe(false);
+  });
+
 });

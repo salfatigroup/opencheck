@@ -94,33 +94,40 @@ export class TestExecutor {
       const agentResult = await this.agentFactory.executeTest(testCase, baseUrl);
       recordingDir = agentResult.recordingDir;
 
-      if (agentResult.passed) {
+      if (agentResult.outcome === "skipped") {
+        return buildResult(testCase, "skipped", "ai", startTime, undefined, agentResult.message, recordingDir);
+      }
+
+      if (agentResult.outcome === "passed") {
         await this.cacheManager.save(testCase, baseUrl, agentResult.steps);
-        return buildResult(testCase, "passed", "ai", startTime, undefined, recordingDir);
+        return buildResult(testCase, "passed", "ai", startTime, undefined, agentResult.message, recordingDir);
       }
 
       lastError = agentResult.message;
     }
 
     await this.cacheManager.delete(testCase, baseUrl);
-    return buildResult(testCase, "failed", "ai", startTime, lastError, recordingDir);
+    return buildResult(testCase, "failed", "ai", startTime, lastError, lastError, recordingDir);
   }
 }
 
 function buildResult(
   testCase: string,
-  status: "passed" | "failed",
+  status: "passed" | "failed" | "skipped",
   source: "cache" | "ai",
   startTime: number,
   error?: string,
+  message?: string,
   recordingDir?: string,
 ): TestResult {
   return {
     testCase,
+    displayName: testCase,
     status,
     source,
     durationMs: Date.now() - startTime,
     ...(error ? { error } : {}),
+    ...(message ? { message } : {}),
     ...(recordingDir ? { recordingDir } : {}),
   };
 }

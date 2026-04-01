@@ -1,6 +1,7 @@
 import { MultiServerMCPClient } from "@langchain/mcp-adapters";
 import type { DynamicStructuredTool } from "@langchain/core/tools";
 import type { Config } from "../config/types.ts";
+import { resolveRecording } from "../config/types.ts";
 
 /** MCP server entry configuration */
 interface McpServerEntry {
@@ -68,10 +69,16 @@ export function buildMcpServerConfig(
   }
 
   playwrightArgs.push(`--browser=${config.browser}`);
+  playwrightArgs.push(`--viewport-size=${config.viewportSize}`);
 
-  if (config.recording) {
-    playwrightArgs.push("--save-trace");
-    playwrightArgs.push("--save-video=1280x720");
+  const rec = resolveRecording(config.recording);
+  if (rec.trace || rec.video) {
+    if (rec.trace) {
+      playwrightArgs.push("--save-trace");
+    }
+    if (rec.video) {
+      playwrightArgs.push("--save-video=1280x720");
+    }
     if (resolvedOutputDir) {
       playwrightArgs.push("--output-dir", resolvedOutputDir);
     }

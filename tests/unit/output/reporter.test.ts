@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ConsoleReporter } from "../../../src/output/reporter.ts";
+import { SecretMasker } from "../../../src/output/secret-masker.ts";
 import type { ReportData } from "../../../src/output/types.ts";
 
 describe("ConsoleReporter", () => {
@@ -45,13 +46,14 @@ describe("ConsoleReporter", () => {
   it("prints summary with pass/fail/cached counts", () => {
     const data: ReportData = {
       results: [
-        { testCase: "test1", status: "passed", source: "cache", durationMs: 100 },
-        { testCase: "test2", status: "passed", source: "ai", durationMs: 200 },
-        { testCase: "test3", status: "failed", source: "ai", durationMs: 300, error: "err" },
+        { testCase: "test1", displayName: "test1", status: "passed", source: "cache", durationMs: 100 },
+        { testCase: "test2", displayName: "test2", status: "passed", source: "ai", durationMs: 200 },
+        { testCase: "test3", displayName: "test3", status: "failed", source: "ai", durationMs: 300, error: "err" },
       ],
       totalDurationMs: 600,
       passed: 2,
       failed: 1,
+      skipped: 0,
       cached: 1,
     };
 
@@ -68,6 +70,7 @@ describe("ConsoleReporter", () => {
       totalDurationMs: 1500,
       passed: 0,
       failed: 0,
+      skipped: 0,
       cached: 0,
     };
 
@@ -103,11 +106,12 @@ describe("ConsoleReporter", () => {
   it("shows troubleshooting tips when tests fail", () => {
     const data: ReportData = {
       results: [
-        { testCase: "test1", status: "failed", source: "ai", durationMs: 300, error: "some error" },
+        { testCase: "test1", displayName: "test1", status: "failed", source: "ai", durationMs: 300, error: "some error" },
       ],
       totalDurationMs: 300,
       passed: 0,
       failed: 1,
+      skipped: 0,
       cached: 0,
     };
 
@@ -121,11 +125,12 @@ describe("ConsoleReporter", () => {
   it("shows error details in summary for failed tests", () => {
     const data: ReportData = {
       results: [
-        { testCase: "test1", status: "failed", source: "ai", durationMs: 300, error: "TEST_FAILED: Element not found\n  Suggestion: Check selectors." },
+        { testCase: "test1", displayName: "test1", status: "failed", source: "ai", durationMs: 300, error: "TEST_FAILED: Element not found\n  Suggestion: Check selectors." },
       ],
       totalDurationMs: 300,
       passed: 0,
       failed: 1,
+      skipped: 0,
       cached: 0,
     };
 
@@ -134,5 +139,46 @@ describe("ConsoleReporter", () => {
     const allOutput = consoleSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("\n");
     expect(allOutput).toContain("Element not found");
     expect(allOutput).toContain("Check selectors");
+  });
+});
+
+describe("ConsoleReporter with SecretMasker", () => {
+  let maskedReporter: ConsoleReporter;
+  let consoleSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const masker = new SecretMasker(["s3cret-password"]);
+    maskedReporter = new ConsoleReporter(masker);
+  });
+
+  it("masks secrets in onTestStart output", () => {
+    maskedReporter.onTestStart("login with s3cret-password");
+    const calls = consoleSpy.mock.calls;
+    const lastCall = String(calls[calls.length - 1]?.[0]);
+    expect(lastCall).not.toContain("s3cret-password");
+    expect(lastCall).toContain("***");
+    expect(lastCall).toContain("[RUNNING]");
+  });
+
+  it("masks secrets in onTestComplete output", () => {
+    maskedReporter.onTestComplete("enter s3cret-password", "passed", "ai", 100);
+    const calls = consoleSpy.mock.calls;
+    const lastCall = String(calls[calls.length - 1]?.[0]);
+    expect(lastCall).not.toContain("s3cret-password");
+    expect(lastCall).toContain("***");
+  });
+
+  it("masks secrets in error messages", () => {
+    maskedReporter.onTestComplete(
+      "test",
+      "failed",
+      "ai",
+      100,
+      "Failed: entered s3cret-password but got rejected",
+    );
+    const allOutput = consoleSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("\n");
+    expect(allOutput).not.toContain("s3cret-password");
+    expect(allOutput).toContain("***");
   });
 });

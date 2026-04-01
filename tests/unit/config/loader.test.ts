@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { loadConfig } from "../../../src/config/loader.ts";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { loadConfig, interpolateEnvVars } from "../../../src/config/loader.ts";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -106,5 +106,109 @@ tests:
     const config = await loadConfig(configPath);
     expect(config.sessionMode).toBe("persistent");
     expect(config.tests[0]?.name).toBe("#login");
+  });
+
+  it("interpolates ${VAR} placeholders from environment variables", async () => {
+    process.env["OPENCHECK_TEST_URL"] = "http://staging.example.com";
+    const configPath = join(tempDir, "tests.yaml");
+    await writeFile(
+      configPath,
+      `baseUrl: "\${OPENCHECK_TEST_URL}"
+tests:
+  - case: "test against staging"
+`
+    );
+
+    const config = await loadConfig(configPath);
+    expect(config.baseUrl).toBe("http://staging.example.com");
+    delete process.env["OPENCHECK_TEST_URL"];
+  });
+
+  it("resolves secrets from env var names to their values", async () => {
+    process.env["OPENCHECK_SECRET_PW"] = "my-password-123";
+    const configPath = join(tempDir, "tests.yaml");
+    await writeFile(
+      configPath,
+      `tests:
+  - case: "login test"
+secrets:
+  - OPENCHECK_SECRET_PW
+`
+    );
+
+    const config = await loadConfig(configPath);
+    expect(config.secrets).toEqual(["my-password-123"]);
+    delete process.env["OPENCHECK_SECRET_PW"];
+  });
+
+  it("filters out unset secret env vars", async () => {
+    delete process.env["OPENCHECK_MISSING_SECRET"];
+    process.env["OPENCHECK_PRESENT_SECRET"] = "value";
+    const configPath = join(tempDir, "tests.yaml");
+    await writeFile(
+      configPath,
+      `tests:
+  - case: "test"
+secrets:
+  - OPENCHECK_MISSING_SECRET
+  - OPENCHECK_PRESENT_SECRET
+`
+    );
+
+    const config = await loadConfig(configPath);
+    expect(config.secrets).toEqual(["value"]);
+    delete process.env["OPENCHECK_PRESENT_SECRET"];
+  });
+
+  it("throws ConfigLoadError when config references unset env vars", async () => {
+    delete process.env["OPENCHECK_NONEXISTENT_VAR"];
+    const configPath = join(tempDir, "tests.yaml");
+    await writeFile(
+      configPath,
+      `tests:
+  - case: "hello \${OPENCHECK_NONEXISTENT_VAR}world"
+`
+    );
+
+    await expect(loadConfig(configPath)).rejects.toThrow("Unset environment variable");
+    await expect(loadConfig(configPath)).rejects.toThrow("OPENCHECK_NONEXISTENT_VAR");
+  });
+});
+
+describe("interpolateEnvVars", () => {
+  it("replaces ${VAR} syntax", () => {
+    process.env["MY_VAR"] = "hello";
+    expect(interpolateEnvVars("${MY_VAR} world")).toBe("hello world");
+    delete process.env["MY_VAR"];
+  });
+
+  it("replaces $VAR syntax", () => {
+    process.env["MY_VAR"] = "hello";
+    expect(interpolateEnvVars("$MY_VAR world")).toBe("hello world");
+    delete process.env["MY_VAR"];
+  });
+
+  it("throws ConfigLoadError for unset variables", () => {
+    delete process.env["UNSET_VAR"];
+    expect(() => interpolateEnvVars("${UNSET_VAR}")).toThrow("Unset environment variable");
+    expect(() => interpolateEnvVars("${UNSET_VAR}")).toThrow("UNSET_VAR");
+  });
+
+  it("throws ConfigLoadError listing all unset variables", () => {
+    delete process.env["MISSING_A"];
+    delete process.env["MISSING_B"];
+    expect(() => interpolateEnvVars("${MISSING_A} and ${MISSING_B}")).toThrow("MISSING_A, MISSING_B");
+  });
+
+  it("leaves text without variables unchanged", () => {
+    expect(interpolateEnvVars("no variables here")).toBe("no variables here");
+  });
+
+  it("handles multiple variables in one string", () => {
+    process.env["VAR_A"] = "foo";
+    process.env["VAR_B"] = "bar";
+    expect(interpolateEnvVars("${VAR_A}-${VAR_B}")).toBe("foo-bar");
+    delete process.env["VAR_A"];
+    delete process.env["VAR_B"];
   });
 });

@@ -24,6 +24,9 @@ describe("generateFailureSummary", () => {
     model: "claude-sonnet-4-5-20250929",
     recursionLimit: 500,
     recording: false,
+    bailOnFailure: false,
+    viewportSize: "1280x720",
+    secrets: [],
     tests: [{ case: "test" }],
   };
 
@@ -42,7 +45,7 @@ describe("generateFailureSummary", () => {
 
   it("calls the LLM with failed test details", async () => {
     const failed: TestResult[] = [
-      { testCase: "check login", status: "failed", source: "ai", durationMs: 100, error: "TEST_FAILED: button not found" },
+      { testCase: "check login", displayName: "check login", status: "failed", source: "ai", durationMs: 100, error: "TEST_FAILED: button not found" },
     ];
 
     await generateFailureSummary(failed, config);
@@ -58,7 +61,7 @@ describe("generateFailureSummary", () => {
     mockInvoke.mockResolvedValue({ content: "  summary text  " });
 
     const failed: TestResult[] = [
-      { testCase: "test1", status: "failed", source: "ai", durationMs: 100, error: "TEST_FAILED: err" },
+      { testCase: "test1", displayName: "test1", status: "failed", source: "ai", durationMs: 100, error: "TEST_FAILED: err" },
     ];
 
     const result = await generateFailureSummary(failed, config);
@@ -69,7 +72,7 @@ describe("generateFailureSummary", () => {
     mockInvoke.mockRejectedValue(new Error("API key missing"));
 
     const failed: TestResult[] = [
-      { testCase: "test1", status: "failed", source: "ai", durationMs: 100, error: "err" },
+      { testCase: "test1", displayName: "test1", status: "failed", source: "ai", durationMs: 100, error: "err" },
     ];
 
     const result = await generateFailureSummary(failed, config);
@@ -78,7 +81,7 @@ describe("generateFailureSummary", () => {
 
   it("handles missing error field gracefully", async () => {
     const failed: TestResult[] = [
-      { testCase: "test1", status: "failed", source: "ai", durationMs: 100 },
+      { testCase: "test1", displayName: "test1", status: "failed", source: "ai", durationMs: 100 },
     ];
 
     await generateFailureSummary(failed, config);

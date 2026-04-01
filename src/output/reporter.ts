@@ -1,31 +1,51 @@
 import type { TestStatus, TestSource } from "../runner/types.ts";
 import type { Reporter, ReportData } from "./types.ts";
+import type { SecretMasker } from "./secret-masker.ts";
 
 /**
  * Console reporter that outputs test progress and summary to stdout.
  * Formats output for CI/CD readability with status prefixes and timing.
+ * Optionally masks secret values in all output.
  */
 export class ConsoleReporter implements Reporter {
+  private readonly masker?: SecretMasker;
+
+  constructor(masker?: SecretMasker) {
+    this.masker = masker;
+  }
+
+  /** Apply secret masking if a masker is configured */
+  private mask(text: string): string {
+    return this.masker ? this.masker.mask(text) : text;
+  }
+
   /** Called when a test case starts executing */
-  onTestStart(testCase: string): void {
-    console.log(`  [RUNNING] ${testCase}`);
+  onTestStart(displayName: string): void {
+    console.log(this.mask(`  [RUNNING] ${displayName}`));
   }
 
   /** Called when a test case completes */
   onTestComplete(
-    testCase: string,
+    displayName: string,
     status: TestStatus,
     source: TestSource,
     durationMs: number,
+    message?: string,
     error?: string,
   ): void {
-    const prefix = status === "passed" ? "  [PASS]" : "  [FAIL]";
+    const prefix = status === "skipped" ? "  [SKIP]" : status === "passed" ? "  [PASS]" : "  [FAIL]";
     const duration = formatDuration(durationMs);
-    console.log(`${prefix} ${testCase} (${source}, ${duration})`);
+    console.log(this.mask(`${prefix} ${displayName} (${source}, ${duration})`));
 
-    if (status === "failed" && error) {
+    if (message) {
+      for (const line of message.split("\n")) {
+        console.log(this.mask(`         ${line}`));
+      }
+    }
+
+    if (status === "failed" && error && error !== message) {
       for (const line of error.split("\n")) {
-        console.log(`         ${line}`);
+        console.log(this.mask(`         ${line}`));
       }
     }
   }
@@ -39,6 +59,7 @@ export class ConsoleReporter implements Reporter {
     console.log(`  Total:   ${data.results.length}`);
     console.log(`  Passed:  ${data.passed}`);
     console.log(`  Failed:  ${data.failed}`);
+    console.log(`  Skipped: ${data.skipped}`);
     console.log(`  Cached:  ${data.cached}`);
     console.log(`  Time:    ${formatDuration(data.totalDurationMs)}`);
     console.log("━".repeat(50));
@@ -48,10 +69,10 @@ export class ConsoleReporter implements Reporter {
       console.log("  Failed tests:");
       for (const result of data.results) {
         if (result.status === "failed") {
-          console.log(`    ✗ ${result.testCase}`);
+          console.log(this.mask(`    ✗ ${result.displayName}`));
           if (result.error) {
             for (const line of result.error.split("\n")) {
-              console.log(`      ${line}`);
+              console.log(this.mask(`      ${line}`));
             }
           }
         }
@@ -71,10 +92,9 @@ export class ConsoleReporter implements Reporter {
       console.log("  Recordings");
       console.log("━".repeat(50));
       for (const result of recorded) {
-        const icon = result.status === "passed" ? "✓" : "✗";
-        console.log(`  ${icon} ${result.testCase}`);
-        console.log(`    Trace: ${result.recordingDir}/trace.zip`);
-        console.log(`    Video: ${result.recordingDir}/video.webm`);
+        const icon = result.status === "passed" ? "✓" : result.status === "skipped" ? "○" : "✗";
+        console.log(`  ${icon} ${result.displayName}`);
+        console.log(`    Dir: ${result.recordingDir}`);
       }
       console.log("");
       console.log("  View traces:");

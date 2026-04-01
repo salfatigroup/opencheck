@@ -23,6 +23,9 @@ describe("createChatModel", () => {
     model: "claude-sonnet-4-5-20250929",
     recursionLimit: 500,
     recording: false,
+    bailOnFailure: false,
+    viewportSize: "1280x720",
+    secrets: [],
     tests: [{ case: "test" }],
   };
 

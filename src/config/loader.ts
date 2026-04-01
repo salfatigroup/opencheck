@@ -14,6 +14,8 @@ export class ConfigLoadError extends Error {
 
 /**
  * Load and validate a YAML config file.
+ * Secrets are specified as env var names (e.g. `TEST_PASSWORD`).
+ * The loader resolves each name to its env var value for masking.
  * @param filePath - Absolute or relative path to the YAML config
  * @returns Validated Config object with defaults applied
  * @throws ConfigLoadError if file is missing, malformed, or fails validation
@@ -21,7 +23,9 @@ export class ConfigLoadError extends Error {
 export async function loadConfig(filePath: string): Promise<Config> {
   await assertFileExists(filePath);
   const raw = await readYamlFile(filePath);
-  return validateConfig(raw);
+  const config = validateConfig(raw);
+  config.secrets = resolveSecrets(config.secrets);
+  return config;
 }
 
 async function assertFileExists(filePath: string): Promise<void> {
@@ -35,7 +39,8 @@ async function assertFileExists(filePath: string): Promise<void> {
 async function readYamlFile(filePath: string): Promise<unknown> {
   try {
     const content = await readFile(filePath, "utf-8");
-    return parseYaml(content) as unknown;
+    const interpolated = interpolateEnvVars(content);
+    return parseYaml(interpolated) as unknown;
   } catch (error) {
     if (error instanceof ConfigLoadError) throw error;
     throw new ConfigLoadError(
@@ -43,6 +48,47 @@ async function readYamlFile(filePath: string): Promise<unknown> {
       error
     );
   }
+}
+
+/**
+ * Replace `${VAR_NAME}` placeholders with values from process.env.
+ * Throws ConfigLoadError if any referenced variable is not set.
+ * Supports both `${VAR}` and `$VAR` (word-boundary) syntax.
+ */
+export function interpolateEnvVars(content: string): string {
+  const missing = new Set<string>();
+
+  const result = content
+    .replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_match, name: string) => {
+      const value = process.env[name];
+      if (value === undefined) missing.add(name);
+      return value ?? "";
+    })
+    .replace(/\$([A-Za-z_][A-Za-z0-9_]*)\b/g, (_match, name: string) => {
+      const value = process.env[name];
+      if (value === undefined) missing.add(name);
+      return value ?? "";
+    });
+
+  if (missing.size > 0) {
+    const vars = Array.from(missing).sort().join(", ");
+    throw new ConfigLoadError(
+      `Unset environment variable${missing.size > 1 ? "s" : ""} referenced in config: ${vars}`,
+    );
+  }
+
+  return result;
+}
+
+/**
+ * Resolve secret env var names to their values for masking.
+ * Each entry in the `secrets` array is an env var name (e.g. "TEST_PASSWORD").
+ * Returns the resolved values, filtering out empty/unset vars.
+ */
+function resolveSecrets(secretNames: string[]): string[] {
+  return secretNames
+    .map((name) => process.env[name] ?? "")
+    .filter((value) => value.length > 0);
 }
 
 function validateConfig(raw: unknown): Config {
