@@ -84,13 +84,6 @@ export function buildMcpServerConfig(
     }
   }
 
-  // Note: --no-show-trace is not yet supported by @playwright/mcp.
-  // When a future version adds this flag, uncomment to prevent
-  // auto-launching the trace viewer in headless/CI environments.
-  // if (config.showTrace === false) {
-  //   playwrightArgs.push("--no-show-trace");
-  // }
-
   const command = playwrightCliPath ? "node" : "npx";
 
   return {

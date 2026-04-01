@@ -65,7 +65,6 @@ describe("AgentFactory", () => {
     recursionLimit: 500,
     recording: false,
     bailOnFailure: false,
-    showTrace: true,
     viewportSize: "1280x720",
     secrets: [],
     tests: [{ case: "check login is working" }],
@@ -112,7 +111,7 @@ describe("AgentFactory", () => {
     const factory = new AgentFactory(baseConfig, {}, mockCreateChatModel);
     const result = await factory.executeTest("check login is working", "http://localhost:3000");
 
-    expect(result.passed).toBe(true);
+    expect(result.outcome).toBe("passed");
     expect(result.message).toContain("TEST_PASSED");
     expect(Array.isArray(result.steps)).toBe(true);
   });
@@ -220,7 +219,7 @@ describe("AgentFactory", () => {
     const factory = new AgentFactory(baseConfig, {}, mockCreateChatModel);
     const result = await factory.executeTest("check login is working", "http://localhost:3000");
     // Verify execution completed successfully (close is called in finally block)
-    expect(result.passed).toBe(true);
+    expect(result.outcome).toBe("passed");
   });
 
   it("forwards recursionLimit from config to agent.invoke()", async () => {
@@ -276,7 +275,7 @@ describe("AgentFactory", () => {
     const factory = new AgentFactory(baseConfig, {}, mockCreateChatModel);
     const result = await factory.executeTest("check login is working", "http://localhost:3000");
 
-    expect(result.passed).toBe(false);
+    expect(result.outcome).toBe("failed");
     expect(result.message).toContain("TEST_FAILED");
   });
 
@@ -292,7 +291,7 @@ describe("AgentFactory", () => {
     const factory = new AgentFactory(baseConfig, {}, mockCreateChatModel);
     const result = await factory.executeTest("check login is working", "http://localhost:3000");
 
-    expect(result.passed).toBe(false);
+    expect(result.outcome).toBe("failed");
     expect(result.message).toContain("TEST_FAILED");
     expect(result.message).toContain("recursion limit");
     expect(result.message).toContain("Suggestion");
@@ -306,7 +305,7 @@ describe("AgentFactory", () => {
     const factory = new AgentFactory(baseConfig, {}, mockCreateChatModel);
     const result = await factory.executeTest("check login is working", "http://localhost:3000");
 
-    expect(result.passed).toBe(false);
+    expect(result.outcome).toBe("failed");
     expect(result.message).toContain("TEST_FAILED");
     expect(result.message).toContain("Something went wrong");
   });
@@ -319,7 +318,7 @@ describe("AgentFactory", () => {
     const factory = new AgentFactory(baseConfig, {}, mockCreateChatModel);
     const result = await factory.executeTest("check login is working", "http://localhost:3000");
 
-    expect(result.passed).toBe(false);
+    expect(result.outcome).toBe("failed");
     expect(result.message).toContain("rate-limit");
   });
 });

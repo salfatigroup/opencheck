@@ -283,29 +283,6 @@ describe("ConfigSchema", () => {
     });
   });
 
-  describe("showTrace", () => {
-    it("defaults showTrace to true when omitted", () => {
-      const result = ConfigSchema.safeParse({
-        tests: [{ case: "test" }],
-      });
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.showTrace).toBe(true);
-      }
-    });
-
-    it("accepts showTrace set to false", () => {
-      const result = ConfigSchema.safeParse({
-        showTrace: false,
-        tests: [{ case: "test" }],
-      });
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.showTrace).toBe(false);
-      }
-    });
-  });
-
   describe("viewportSize", () => {
     it.each([
       { input: undefined, expected: "1280x720", desc: "defaults to 1280x720 when omitted" },

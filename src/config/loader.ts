@@ -14,6 +14,8 @@ export class ConfigLoadError extends Error {
 
 /**
  * Load and validate a YAML config file.
+ * Secrets are specified as env var names (e.g. `TEST_PASSWORD`).
+ * The loader resolves each name to its env var value for masking.
  * @param filePath - Absolute or relative path to the YAML config
  * @returns Validated Config object with defaults applied
  * @throws ConfigLoadError if file is missing, malformed, or fails validation
@@ -21,7 +23,9 @@ export class ConfigLoadError extends Error {
 export async function loadConfig(filePath: string): Promise<Config> {
   await assertFileExists(filePath);
   const raw = await readYamlFile(filePath);
-  return validateConfig(raw);
+  const config = validateConfig(raw);
+  config.secrets = resolveSecrets(config.secrets);
+  return config;
 }
 
 async function assertFileExists(filePath: string): Promise<void> {
@@ -74,6 +78,17 @@ export function interpolateEnvVars(content: string): string {
   }
 
   return result;
+}
+
+/**
+ * Resolve secret env var names to their values for masking.
+ * Each entry in the `secrets` array is an env var name (e.g. "TEST_PASSWORD").
+ * Returns the resolved values, filtering out empty/unset vars.
+ */
+function resolveSecrets(secretNames: string[]): string[] {
+  return secretNames
+    .map((name) => process.env[name] ?? "")
+    .filter((value) => value.length > 0);
 }
 
 function validateConfig(raw: unknown): Config {

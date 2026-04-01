@@ -124,6 +124,42 @@ tests:
     delete process.env["OPENCHECK_TEST_URL"];
   });
 
+  it("resolves secrets from env var names to their values", async () => {
+    process.env["OPENCHECK_SECRET_PW"] = "my-password-123";
+    const configPath = join(tempDir, "tests.yaml");
+    await writeFile(
+      configPath,
+      `tests:
+  - case: "login test"
+secrets:
+  - OPENCHECK_SECRET_PW
+`
+    );
+
+    const config = await loadConfig(configPath);
+    expect(config.secrets).toEqual(["my-password-123"]);
+    delete process.env["OPENCHECK_SECRET_PW"];
+  });
+
+  it("filters out unset secret env vars", async () => {
+    delete process.env["OPENCHECK_MISSING_SECRET"];
+    process.env["OPENCHECK_PRESENT_SECRET"] = "value";
+    const configPath = join(tempDir, "tests.yaml");
+    await writeFile(
+      configPath,
+      `tests:
+  - case: "test"
+secrets:
+  - OPENCHECK_MISSING_SECRET
+  - OPENCHECK_PRESENT_SECRET
+`
+    );
+
+    const config = await loadConfig(configPath);
+    expect(config.secrets).toEqual(["value"]);
+    delete process.env["OPENCHECK_PRESENT_SECRET"];
+  });
+
   it("throws ConfigLoadError when config references unset env vars", async () => {
     delete process.env["OPENCHECK_NONEXISTENT_VAR"];
     const configPath = join(tempDir, "tests.yaml");

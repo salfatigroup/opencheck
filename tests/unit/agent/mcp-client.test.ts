@@ -15,7 +15,6 @@ describe("buildMcpServerConfig", () => {
     recursionLimit: 500,
     recording: false,
     bailOnFailure: false,
-    showTrace: true,
     viewportSize: "1280x720",
     secrets: [],
     tests: [{ case: "check login" }],
@@ -133,14 +132,4 @@ describe("buildMcpServerConfig", () => {
     expect(args.some((a) => a.startsWith("--save-video="))).toBe(false);
   });
 
-  it("does not include --no-show-trace when showTrace is false (not yet supported by @playwright/mcp)", () => {
-    const config = buildMcpServerConfig({ ...baseConfig, showTrace: false });
-    // --no-show-trace is not yet supported by @playwright/mcp, so config is accepted but flag is not emitted
-    expect(config.mcpServers["playwright"]!.args).not.toContain("--no-show-trace");
-  });
-
-  it("omits --no-show-trace when showTrace is true (default)", () => {
-    const config = buildMcpServerConfig(baseConfig);
-    expect(config.mcpServers["playwright"]!.args).not.toContain("--no-show-trace");
-  });
 });

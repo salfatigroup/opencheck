@@ -134,12 +134,11 @@ export class AgentFactory {
       );
 
       const lastMessage = extractLastMessage(result);
-      const passed = lastMessage.includes("TEST_PASSED");
       const skipped = lastMessage.includes("TEST_SKIPPED");
+      const passed = lastMessage.includes("TEST_PASSED");
       const outcome = skipped ? "skipped" as const : passed ? "passed" as const : "failed" as const;
 
       return {
-        passed,
         outcome,
         steps: recorder.getSteps(),
         message: lastMessage,
@@ -147,7 +146,6 @@ export class AgentFactory {
       };
     } catch (error) {
       return {
-        passed: false,
         outcome: "failed",
         steps: recorder.getSteps(),
         message: formatAgentError(error, testCase, this.config.recursionLimit),
