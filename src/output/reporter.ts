@@ -94,8 +94,7 @@ export class ConsoleReporter implements Reporter {
       for (const result of recorded) {
         const icon = result.status === "passed" ? "✓" : result.status === "skipped" ? "○" : "✗";
         console.log(`  ${icon} ${result.displayName}`);
-        console.log(`    Trace: ${result.recordingDir}/trace.zip`);
-        console.log(`    Video: ${result.recordingDir}/video.webm`);
+        console.log(`    Dir: ${result.recordingDir}`);
       }
       console.log("");
       console.log("  View traces:");

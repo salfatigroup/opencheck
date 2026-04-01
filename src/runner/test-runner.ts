@@ -30,6 +30,7 @@ export class TestRunner {
       const displayName = test.name ?? truncateTestCase(test.case);
       this.reporter.onTestStart(displayName);
 
+      const testStartTime = Date.now();
       let result: TestResult;
       try {
         result = await this.executeFn(test.case, baseUrl);
@@ -41,7 +42,7 @@ export class TestRunner {
           displayName,
           status: "failed",
           source: "ai",
-          durationMs: Date.now() - startTime,
+          durationMs: Date.now() - testStartTime,
           error: `Unexpected error (${errorName}): ${errorMessage}`,
         };
       }
