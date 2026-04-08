@@ -275,11 +275,10 @@ Any provider supported by [LangChain's initChatModel](https://js.langchain.com/d
 
 ## Releasing
 
-1. Bump `version` in `package.json`
-2. Commit and push to `main`
-3. Tag and push: `git tag <version> && git push origin <version>`
-4. The `publish-npm.yml` workflow runs tests and publishes to npm via [trusted publishing](https://docs.npmjs.com/trusted-publishers) (OIDC — no token needed)
-5. Optionally create a GitHub Release for visibility: `gh release create <version> --title "v<version>" --generate-notes`
+1. Bump `version` in `package.json`, commit and push to `main`
+2. Tag and push: `git tag <version> && git push origin <version>`
+
+The `publish-npm.yml` workflow takes it from there — runs tests, publishes to npm via [trusted publishing](https://docs.npmjs.com/trusted-publishers) (OIDC — no token needed, provenance auto-generated), and creates a GitHub Release with auto-generated notes.
 
 ## License
 
