@@ -97,7 +97,15 @@ describe("AgentFactory", () => {
     expect(prompt).toContain("browser");
     expect(prompt).toContain("curl");
     expect(prompt).toContain("browser_snapshot");
+    expect(prompt).toContain("browser_evaluate");
     expect(prompt).toContain("API");
+  });
+
+  it("includes token efficiency guidance to prefer browser_evaluate over snapshots", () => {
+    const prompt = AgentFactory.buildSystemPrompt("check loading state", "http://localhost:3000");
+    expect(prompt).toContain("Token efficiency");
+    expect(prompt).toContain("browser_evaluate");
+    expect(prompt).toContain("not the full page tree");
   });
 
   it("instructs the model to use the named-case lookup tool for references", () => {
