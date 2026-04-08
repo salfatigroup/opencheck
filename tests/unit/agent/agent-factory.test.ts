@@ -105,7 +105,7 @@ describe("AgentFactory", () => {
     const prompt = AgentFactory.buildSystemPrompt("check loading state", "http://localhost:3000");
     expect(prompt).toContain("Token efficiency");
     expect(prompt).toContain("browser_evaluate");
-    expect(prompt).toContain("document.querySelector");
+    expect(prompt).toContain("not the full page tree");
   });
 
   it("instructs the model to use the named-case lookup tool for references", () => {
