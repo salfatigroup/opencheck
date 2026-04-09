@@ -1,10 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Config } from "../../../src/config/types.ts";
 
-// Self-contained vi.mock factories — no external variable references.
-// Vitest hoists vi.mock() calls to the top of the file, so factory functions
-// must not reference any variables declared in module scope.
-// Only vi.fn() is available inside factories (it's always in scope).
+// vi.hoisted values are available inside vi.mock factories because they are
+// hoisted above them. This allows per-test control of mock return values.
+const { mockScreenshotInvoke, mockMkdirSync, mockWriteFileSync } = vi.hoisted(() => ({
+  mockScreenshotInvoke: vi.fn().mockResolvedValue("no image data"),
+  mockMkdirSync: vi.fn(),
+  mockWriteFileSync: vi.fn(),
+}));
+
+vi.mock("node:fs", () => ({
+  mkdirSync: mockMkdirSync,
+  writeFileSync: mockWriteFileSync,
+}));
 
 vi.mock("@langchain/mcp-adapters", () => {
   return {
@@ -30,6 +38,11 @@ vi.mock("@langchain/mcp-adapters", () => {
           name: "browser_type",
           description: "Type text",
           invoke: vi.fn().mockResolvedValue("Typed text"),
+        },
+        {
+          name: "browser_screenshot",
+          description: "Take screenshot",
+          invoke: mockScreenshotInvoke,
         },
       ]);
       close = vi.fn().mockResolvedValue(undefined);
@@ -73,6 +86,7 @@ describe("AgentFactory", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockScreenshotInvoke.mockResolvedValue("no image data");
     mockCreateChatModel.mockResolvedValue({
       bindTools() { return this; },
     });
@@ -344,5 +358,80 @@ describe("AgentFactory", () => {
 
     expect(result.outcome).toBe("failed");
     expect(result.message).toContain("rate-limit");
+  });
+
+  it("saves before/after screenshots when test fails and browser_screenshot is available", async () => {
+    const fakePng = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+    mockScreenshotInvoke.mockResolvedValue(JSON.stringify([{ type: "image", data: fakePng }]));
+
+    (createReactAgent as unknown as ReturnType<typeof vi.fn>).mockImplementation((config) => ({
+      invoke: vi.fn().mockImplementation(async () => {
+        const tools = (config as { tools: Array<{ name: string; invoke(input: Record<string, unknown>): Promise<string> }> }).tools;
+        const navigateTool = tools.find((tool) => tool.name === "browser_navigate");
+        if (navigateTool) {
+          await navigateTool.invoke({ url: "http://localhost:3000" });
+        }
+        return { messages: [{ content: "TEST_FAILED: Page not found" }] };
+      }),
+    }));
+
+    const factory = new AgentFactory(baseConfig, {}, mockCreateChatModel);
+    const result = await factory.executeTest("check login is working", "http://localhost:3000");
+
+    expect(result.outcome).toBe("failed");
+    expect(mockMkdirSync).toHaveBeenCalledWith(
+      expect.stringContaining("opencheck-recordings"),
+      { recursive: true },
+    );
+    expect(mockWriteFileSync).toHaveBeenCalledWith(
+      expect.stringContaining("before.png"),
+      expect.any(Buffer),
+    );
+    expect(mockWriteFileSync).toHaveBeenCalledWith(
+      expect.stringContaining("after.png"),
+      expect.any(Buffer),
+    );
+  });
+
+  it("does not save screenshots when test passes", async () => {
+    const fakePng = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+    mockScreenshotInvoke.mockResolvedValue(JSON.stringify([{ type: "image", data: fakePng }]));
+
+    const factory = new AgentFactory(baseConfig, {}, mockCreateChatModel);
+    const result = await factory.executeTest("check login is working", "http://localhost:3000");
+
+    expect(result.outcome).toBe("passed");
+    expect(mockWriteFileSync).not.toHaveBeenCalled();
+  });
+
+  it("sets recordingDir on failed tests even when recording is disabled", async () => {
+    (createReactAgent as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
+      invoke: vi.fn().mockResolvedValue({
+        messages: [{ content: "TEST_FAILED: Something broke" }],
+      }),
+    }));
+
+    const factory = new AgentFactory(baseConfig, {}, mockCreateChatModel);
+    const result = await factory.executeTest("check login is working", "http://localhost:3000");
+
+    expect(result.outcome).toBe("failed");
+    expect(result.recordingDir).toBeDefined();
+    expect(result.recordingDir).toContain("opencheck-recordings");
+  });
+
+  it("handles browser_screenshot errors gracefully during failure capture", async () => {
+    mockScreenshotInvoke.mockRejectedValue(new Error("Browser closed"));
+
+    (createReactAgent as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
+      invoke: vi.fn().mockResolvedValue({
+        messages: [{ content: "TEST_FAILED: Something broke" }],
+      }),
+    }));
+
+    const factory = new AgentFactory(baseConfig, {}, mockCreateChatModel);
+    const result = await factory.executeTest("check login is working", "http://localhost:3000");
+
+    expect(result.outcome).toBe("failed");
+    expect(mockWriteFileSync).not.toHaveBeenCalled();
   });
 });
