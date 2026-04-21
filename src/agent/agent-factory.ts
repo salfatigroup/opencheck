@@ -253,6 +253,18 @@ function formatAgentError(error: unknown, testCase: string, recursionLimit: numb
     ].join("\n");
   }
 
+  if (
+    errorMessage.includes("ServiceUnavailableException") ||
+    errorMessage.includes("503") ||
+    errorMessage.includes("unable to process your request")
+  ) {
+    return [
+      `TEST_FAILED: Bedrock returned a transient service error (503) and retries were exhausted.`,
+      `  Error: ${errorMessage}`,
+      `  Suggestion: This is a transient AWS Bedrock issue. Re-run the test, or increase 'llmRetryAttempts' in your config (default: 3).`,
+    ].join("\n");
+  }
+
   if (errorMessage.includes("ECONNREFUSED") || errorMessage.includes("ENOTFOUND") || errorMessage.includes("network")) {
     return [
       `TEST_FAILED: Network error while running the agent.`,

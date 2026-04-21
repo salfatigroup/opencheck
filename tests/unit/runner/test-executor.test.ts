@@ -25,6 +25,7 @@ describe("TestExecutor", () => {
       sessionMode: "isolated",
       timeout: 60000,
       maxAttempts: 3,
+      llmRetryAttempts: 3,
       cacheDir: tempDir,
       model: "claude-sonnet-4-5-20250929",
       recursionLimit: 500,
