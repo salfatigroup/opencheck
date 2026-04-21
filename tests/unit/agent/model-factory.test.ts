@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Config } from "../../../src/config/types.ts";
-import { createChatModel, isTransientError } from "../../../src/agent/model-factory.ts";
+import { createChatModel, isTransientError, TransientLLMError } from "../../../src/agent/model-factory.ts";
 
 const mockWithRetry = vi.fn().mockReturnValue({ _modelType: "retry-wrapped" });
 
@@ -161,5 +161,25 @@ describe("isTransientError", () => {
       value: { name: "ServiceUnavailableException" },
     });
     expect(isTransientError(error)).toBe(true);
+  });
+});
+
+describe("TransientLLMError", () => {
+  it("is an instance of Error", () => {
+    const error = new TransientLLMError("service unavailable");
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(TransientLLMError);
+  });
+
+  it("has name set to TransientLLMError", () => {
+    const error = new TransientLLMError("service unavailable");
+    expect(error.name).toBe("TransientLLMError");
+  });
+
+  it("preserves the original error as cause", () => {
+    const original = new Error("ServiceUnavailableException: Bedrock is unable to process your request");
+    const error = new TransientLLMError(original.message, { cause: original });
+    expect(error.message).toBe(original.message);
+    expect(error.cause).toBe(original);
   });
 });

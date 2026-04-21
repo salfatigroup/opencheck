@@ -10,7 +10,7 @@ import {
   normalizeToolInput,
 } from "../cache/tool-input.ts";
 import { buildMcpServerConfig } from "./mcp-client.ts";
-import { createChatModel } from "./model-factory.ts";
+import { createChatModel, isTransientError, TransientLLMError } from "./model-factory.ts";
 import type { Config, TestCase } from "../config/types.ts";
 import type { AgentExecutionResult } from "./types.ts";
 import type { McpRuntimeOptions } from "./mcp-client.ts";
@@ -149,10 +149,14 @@ export class AgentFactory {
         recordingDir,
       };
     } catch (error) {
+      const wrappedError =
+        error instanceof Error && isTransientError(error)
+          ? new TransientLLMError(error.message, { cause: error })
+          : error;
       return {
         outcome: "failed",
         steps: recorder.getSteps(),
-        message: formatAgentError(error, testCase, this.config.recursionLimit),
+        message: formatAgentError(wrappedError, testCase, this.config.recursionLimit),
       };
     } finally {
       await client.close();
@@ -253,11 +257,7 @@ function formatAgentError(error: unknown, testCase: string, recursionLimit: numb
     ].join("\n");
   }
 
-  if (
-    errorMessage.includes("ServiceUnavailableException") ||
-    errorMessage.includes("503") ||
-    errorMessage.includes("unable to process your request")
-  ) {
+  if (error instanceof TransientLLMError) {
     return [
       `TEST_FAILED: Bedrock returned a transient service error (503) and retries were exhausted.`,
       `  Error: ${errorMessage}`,

@@ -3,6 +3,17 @@ import type { BaseChatModel } from "@langchain/core/language_models/chat_models"
 import type { Config } from "../config/types.ts";
 
 /**
+ * Custom error indicating a transient LLM provider failure (e.g. Bedrock 503).
+ * Used for instanceof checks in error handling instead of string matching.
+ */
+export class TransientLLMError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "TransientLLMError";
+  }
+}
+
+/**
  * Classify whether an error is transient and worth retrying.
  * Covers Bedrock service errors, throttling, and network transients.
  */
