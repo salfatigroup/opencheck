@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import pkg from "../package.json" with { type: "json" };
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -21,7 +22,7 @@ const program = new Command();
 program
   .name("opencheck")
   .description("AI-powered end-to-end browser and API test automation")
-  .version("0.1.0")
+  .version(pkg.version)
   .requiredOption("-c, --config <path>", "Path to tests.yaml config file")
   .action(async (options: { config: string }) => {
     let exitCode = 0;
@@ -123,7 +124,7 @@ program
 
       const runner = new TestRunner(config, reporter, executeFn);
 
-      console.log(`\nOpenCheck v0.1.0`);
+      console.log(`\nOpenCheck v${pkg.version}`);
       console.log(`Running ${config.tests.length} test(s)...\n`);
 
       const runResult = await runner.run();
