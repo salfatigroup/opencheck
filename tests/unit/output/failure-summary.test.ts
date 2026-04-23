@@ -20,6 +20,7 @@ describe("generateFailureSummary", () => {
     sessionMode: "isolated",
     timeout: 60000,
     maxAttempts: 3,
+    llmRetryAttempts: 3,
     cacheDir: ".opencheck-cache",
     model: "claude-sonnet-4-5-20250929",
     recursionLimit: 500,

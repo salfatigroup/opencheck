@@ -28,6 +28,7 @@ export const ConfigSchema = z.object({
   sessionMode: z.enum(["isolated", "persistent"]).default("isolated"),
   timeout: z.number().positive().default(60_000),
   maxAttempts: z.number().int().positive().max(10).default(3),
+  llmRetryAttempts: z.number().int().nonnegative().max(10).default(3),
   cacheDir: z.string().default(".opencheck-cache"),
   model: z.string().default("claude-sonnet-4-5-20250929"),
   modelProvider: z.string().optional(),

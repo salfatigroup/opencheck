@@ -26,6 +26,7 @@ describe("CLI Pipeline (integration)", () => {
       sessionMode: "isolated",
       timeout: 60000,
       maxAttempts: 2,
+      llmRetryAttempts: 3,
       cacheDir: tempDir,
       model: "claude-sonnet-4-5-20250929",
       recursionLimit: 500,

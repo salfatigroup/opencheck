@@ -74,6 +74,7 @@ describe("ConfigSchema", () => {
       expect(result.data.sessionMode).toBe("isolated");
       expect(result.data.timeout).toBe(60000);
       expect(result.data.maxAttempts).toBe(3);
+      expect(result.data.llmRetryAttempts).toBe(3);
       expect(result.data.cacheDir).toBe(".opencheck-cache");
       expect(result.data.model).toBe("claude-sonnet-4-5-20250929");
       expect(result.data.recursionLimit).toBe(500);

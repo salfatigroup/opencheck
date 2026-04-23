@@ -60,6 +60,7 @@ describe("AgentFactory", () => {
     sessionMode: "isolated",
     timeout: 60000,
     maxAttempts: 3,
+    llmRetryAttempts: 3,
     cacheDir: ".opencheck-cache",
     model: "claude-sonnet-4-5-20250929",
     recursionLimit: 500,
@@ -316,6 +317,21 @@ describe("AgentFactory", () => {
     expect(result.outcome).toBe("failed");
     expect(result.message).toContain("TEST_FAILED");
     expect(result.message).toContain("Something went wrong");
+  });
+
+  it("returns user-friendly error on ServiceUnavailableException", async () => {
+    (createReactAgent as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => ({
+      invoke: vi.fn().mockRejectedValue(
+        new Error("Bedrock is unable to process your request. ServiceUnavailableException"),
+      ),
+    }));
+
+    const factory = new AgentFactory(baseConfig, {}, mockCreateChatModel);
+    const result = await factory.executeTest("check login is working", "http://localhost:3000");
+
+    expect(result.outcome).toBe("failed");
+    expect(result.message).toContain("transient service error");
+    expect(result.message).toContain("llmRetryAttempts");
   });
 
   it("returns user-friendly error on rate limit errors", async () => {
