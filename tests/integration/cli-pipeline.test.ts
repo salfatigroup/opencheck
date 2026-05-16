@@ -29,6 +29,7 @@ describe("CLI Pipeline (integration)", () => {
       llmRetryAttempts: 3,
       cacheDir: tempDir,
       model: "claude-sonnet-4-5-20250929",
+      fallbackModels: [],
       recursionLimit: 500,
       recording: false,
       bailOnFailure: false,

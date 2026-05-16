@@ -44,6 +44,8 @@ tests:
 | `recording` | `boolean` | `true` | Enable Playwright trace and video recording per test. Saves to `.opencheck-recordings/`. Set `false` to disable. |
 | `model` | `string` | `"claude-sonnet-4-5-20250929"` | LLM model identifier for the AI agent. |
 | `modelProvider` | `string` | _(auto-inferred)_ | LangChain provider name. Required for Bedrock; auto-inferred for Anthropic, OpenAI, etc. See [Providers](../README.md#providers). |
+| `fallbackModels` | `FallbackModel[]` | `[]` | Ordered list of fallback LLMs. The agent fails over to the next entry when the primary errors (e.g. 429 rate-limit, transient provider failure). See [Fallback Models](#fallback-models). |
+| `llmRetryAttempts` | `number` (0-10) | `3` | How many times to retry transient LLM errors (429, 503, network) per model before falling through to the next fallback. Set to `0` to disable retries. |
 | `tests` | `TestCase[]` | _(required)_ | Array of test cases. Must have at least one entry. |
 
 ### Test Case Fields
@@ -56,6 +58,44 @@ Each entry in the `tests` array supports:
 | `name` | `string` | _(none)_ | Optional name for referencing a test case from another case, e.g. `#login`. |
 | `baseUrl` | `string` (URL) | _(inherits top-level)_ | Override the base URL for this specific test. |
 | `timeout` | `number` (ms) | _(inherits top-level)_ | Override the timeout for this specific test. |
+
+## Fallback Models
+
+Configure one or more fallback LLMs that the agent will try in order when the primary model errors out. The common case: your primary provider (e.g. Groq) hits a rate limit, and you want the run to continue on OpenRouter or another provider without aborting the suite.
+
+```yaml
+model: "llama-3.3-70b-versatile"
+modelProvider: "groq"
+fallbackModels:
+  - model: "anthropic/claude-sonnet-4.5"
+    modelProvider: "openai"
+    baseUrl: "https://openrouter.ai/api/v1"
+    apiKey: "${OPENROUTER_API_KEY}"
+```
+
+### How it works
+
+1. The agent tries the primary model.
+2. On a transient error (429, 503, network blip, etc.), the primary's own retry (`llmRetryAttempts`, default `3`) kicks in.
+3. If the retries are exhausted — or the error is non-transient (e.g. 401) — the next entry in `fallbackModels` is tried, with its own retry budget.
+4. The chain continues until a model succeeds or all fallbacks are exhausted.
+
+### Fields
+
+Each entry in `fallbackModels` supports:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `model` | `string` | _(required)_ | Model identifier. Format depends on provider (e.g. `anthropic/claude-sonnet-4.5` for OpenRouter via OpenAI-compatible API). |
+| `modelProvider` | `string` | _(auto-inferred)_ | LangChain provider name. Use `openai` for OpenRouter and any other OpenAI-compatible gateway. |
+| `baseUrl` | `string` (URL) | _(provider default)_ | Override the upstream HTTP endpoint. For `openai`/`azure_openai` this maps to the SDK's `configuration.baseURL`; other providers receive `baseUrl` directly. |
+| `apiKey` | `string` | _(env var)_ | API key for this fallback only. Use `${VAR}` interpolation to pull from env. |
+
+### Notes
+
+- **OpenRouter:** Use `modelProvider: "openai"` (OpenRouter is OpenAI-compatible). Install `@langchain/openai` if not already present: `bun add @langchain/openai`.
+- **Multi-tier fallback:** List as many entries as you want — they're tried top-to-bottom.
+- **All errors trigger fallback:** Including non-transient errors like `401 Unauthorized`. This keeps your suite running through misconfigured primaries, but watch the logs on first-run to catch credential mistakes early.
 
 ## Named References
 

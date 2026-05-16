@@ -1,14 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Config } from "../../../src/config/types.ts";
-import { createChatModel, isTransientError, TransientLLMError } from "../../../src/agent/model-factory.ts";
+import { buildInitOptions, createChatModel, isTransientError, TransientLLMError } from "../../../src/agent/model-factory.ts";
 
-const mockWithRetry = vi.fn().mockReturnValue({ _modelType: "retry-wrapped" });
+const mockWithFallbacks = vi.fn();
+const mockWithRetry = vi.fn();
 
-const mockInitChatModel = vi.fn().mockResolvedValue({
-  _modelType: "mock-chat-model",
+const buildMockModel = (label: string) => ({
+  _modelType: label,
   invoke: vi.fn(),
   withRetry: mockWithRetry,
+  withFallbacks: mockWithFallbacks,
 });
+
+const mockInitChatModel = vi.fn();
 
 vi.mock("langchain/chat_models/universal", () => ({
   initChatModel: (...args: unknown[]) => mockInitChatModel(...args),
@@ -25,6 +29,7 @@ describe("createChatModel", () => {
     llmRetryAttempts: 3,
     cacheDir: ".opencheck-cache",
     model: "claude-sonnet-4-5-20250929",
+    fallbackModels: [],
     recursionLimit: 500,
     recording: false,
     bailOnFailure: false,
@@ -35,12 +40,9 @@ describe("createChatModel", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockWithRetry.mockReturnValue({ _modelType: "retry-wrapped" });
-    mockInitChatModel.mockResolvedValue({
-      _modelType: "mock-chat-model",
-      invoke: vi.fn(),
-      withRetry: mockWithRetry,
-    });
+    mockWithRetry.mockImplementation(() => buildMockModel("retry-wrapped"));
+    mockWithFallbacks.mockImplementation(() => buildMockModel("fallback-wrapped"));
+    mockInitChatModel.mockImplementation(async () => buildMockModel("mock-chat-model"));
   });
 
   it("calls initChatModel with the configured model name", async () => {
@@ -95,7 +97,7 @@ describe("createChatModel", () => {
     expect(mockWithRetry).toHaveBeenCalledWith(
       expect.objectContaining({ stopAfterAttempt: 5 }),
     );
-    expect(result).toEqual({ _modelType: "retry-wrapped" });
+    expect(result).toHaveProperty("_modelType", "retry-wrapped");
   });
 
   it("wraps model with .withRetry() using default llmRetryAttempts of 3", async () => {
@@ -127,6 +129,192 @@ describe("createChatModel", () => {
     // Transient error should not be thrown
     const serviceError = new Error("ServiceUnavailableException: Bedrock is unable to process your request");
     expect(() => onFailedAttempt(serviceError)).not.toThrow();
+  });
+
+  describe("fallbackModels", () => {
+    it("does not wrap with .withFallbacks() when fallbackModels is empty", async () => {
+      await createChatModel(baseConfig);
+      expect(mockWithFallbacks).not.toHaveBeenCalled();
+    });
+
+    it("wraps the primary with .withFallbacks() when fallbackModels has entries", async () => {
+      const config: Config = {
+        ...baseConfig,
+        fallbackModels: [
+          { model: "anthropic/claude-sonnet-4.5", modelProvider: "openai" },
+        ],
+      };
+      const result = await createChatModel(config);
+
+      expect(mockWithFallbacks).toHaveBeenCalledTimes(1);
+      const callArg = mockWithFallbacks.mock.calls[0]?.[0] as { fallbacks: unknown[] };
+      expect(callArg.fallbacks).toHaveLength(1);
+      expect(result).toHaveProperty("_modelType", "fallback-wrapped");
+    });
+
+    it("builds each fallback with initChatModel and the configured provider", async () => {
+      const config: Config = {
+        ...baseConfig,
+        fallbackModels: [
+          { model: "anthropic/claude-sonnet-4.5", modelProvider: "openai" },
+          { model: "google/gemini-1.5-flash", modelProvider: "openai" },
+        ],
+      };
+      await createChatModel(config);
+
+      // 1 primary + 2 fallbacks = 3 initChatModel calls
+      expect(mockInitChatModel).toHaveBeenCalledTimes(3);
+      expect(mockInitChatModel).toHaveBeenNthCalledWith(
+        2,
+        "anthropic/claude-sonnet-4.5",
+        expect.objectContaining({ modelProvider: "openai" }),
+      );
+      expect(mockInitChatModel).toHaveBeenNthCalledWith(
+        3,
+        "google/gemini-1.5-flash",
+        expect.objectContaining({ modelProvider: "openai" }),
+      );
+    });
+
+    it("retries each fallback independently when llmRetryAttempts > 0", async () => {
+      const config: Config = {
+        ...baseConfig,
+        llmRetryAttempts: 2,
+        fallbackModels: [
+          { model: "fallback-a", modelProvider: "openai" },
+          { model: "fallback-b", modelProvider: "openai" },
+        ],
+      };
+      await createChatModel(config);
+
+      // primary + 2 fallbacks each retry-wrapped
+      expect(mockWithRetry).toHaveBeenCalledTimes(3);
+      for (const call of mockWithRetry.mock.calls) {
+        expect(call[0]).toMatchObject({ stopAfterAttempt: 2 });
+      }
+    });
+
+    it("does not retry-wrap fallbacks when llmRetryAttempts is 0", async () => {
+      const config: Config = {
+        ...baseConfig,
+        llmRetryAttempts: 0,
+        fallbackModels: [{ model: "fallback-a", modelProvider: "openai" }],
+      };
+      await createChatModel(config);
+
+      expect(mockWithRetry).not.toHaveBeenCalled();
+      // Still wraps with fallbacks though
+      expect(mockWithFallbacks).toHaveBeenCalledTimes(1);
+    });
+
+    it("passes apiKey through to initChatModel for fallbacks", async () => {
+      const config: Config = {
+        ...baseConfig,
+        fallbackModels: [
+          {
+            model: "anthropic/claude-sonnet-4.5",
+            modelProvider: "openai",
+            apiKey: "sk-or-test-key",
+          },
+        ],
+      };
+      await createChatModel(config);
+
+      expect(mockInitChatModel).toHaveBeenNthCalledWith(
+        2,
+        "anthropic/claude-sonnet-4.5",
+        expect.objectContaining({ apiKey: "sk-or-test-key" }),
+      );
+    });
+
+    it("maps baseUrl to configuration.baseURL for openai-compatible fallbacks (e.g. OpenRouter)", async () => {
+      const config: Config = {
+        ...baseConfig,
+        fallbackModels: [
+          {
+            model: "anthropic/claude-sonnet-4.5",
+            modelProvider: "openai",
+            baseUrl: "https://openrouter.ai/api/v1",
+            apiKey: "sk-or-test-key",
+          },
+        ],
+      };
+      await createChatModel(config);
+
+      expect(mockInitChatModel).toHaveBeenNthCalledWith(
+        2,
+        "anthropic/claude-sonnet-4.5",
+        expect.objectContaining({
+          modelProvider: "openai",
+          apiKey: "sk-or-test-key",
+          configuration: { baseURL: "https://openrouter.ai/api/v1" },
+        }),
+      );
+    });
+
+    it("passes baseUrl directly for non-openai fallbacks", async () => {
+      const config: Config = {
+        ...baseConfig,
+        fallbackModels: [
+          {
+            model: "claude-sonnet-4-5-20250929",
+            modelProvider: "anthropic",
+            baseUrl: "https://api.anthropic.com",
+          },
+        ],
+      };
+      await createChatModel(config);
+
+      const callArgs = mockInitChatModel.mock.calls[1]?.[1] as Record<string, unknown>;
+      expect(callArgs).toMatchObject({
+        modelProvider: "anthropic",
+        baseUrl: "https://api.anthropic.com",
+      });
+      expect(callArgs).not.toHaveProperty("configuration");
+    });
+  });
+});
+
+describe("buildInitOptions", () => {
+  it("returns an empty object when no fields are set", () => {
+    expect(buildInitOptions({})).toEqual({});
+  });
+
+  it("includes modelProvider when set", () => {
+    expect(buildInitOptions({ modelProvider: "anthropic" })).toEqual({
+      modelProvider: "anthropic",
+    });
+  });
+
+  it("includes apiKey when set", () => {
+    expect(buildInitOptions({ apiKey: "sk-test" })).toEqual({ apiKey: "sk-test" });
+  });
+
+  it("maps baseUrl to configuration.baseURL for openai provider", () => {
+    expect(
+      buildInitOptions({ modelProvider: "openai", baseUrl: "https://openrouter.ai/api/v1" }),
+    ).toEqual({
+      modelProvider: "openai",
+      configuration: { baseURL: "https://openrouter.ai/api/v1" },
+    });
+  });
+
+  it("maps baseUrl to configuration.baseURL for azure_openai provider", () => {
+    expect(
+      buildInitOptions({ modelProvider: "azure_openai", baseUrl: "https://x.openai.azure.com" }),
+    ).toEqual({
+      modelProvider: "azure_openai",
+      configuration: { baseURL: "https://x.openai.azure.com" },
+    });
+  });
+
+  it("passes baseUrl directly for non-openai providers", () => {
+    expect(
+      buildInitOptions({ modelProvider: "groq", baseUrl: "https://api.groq.com" }),
+    ).toEqual({
+      modelProvider: "groq",
+      baseUrl: "https://api.groq.com",
+    });
   });
 });
 
