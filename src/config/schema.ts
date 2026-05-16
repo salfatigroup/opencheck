@@ -8,6 +8,19 @@ export const TestCaseSchema = z.object({
   timeout: z.number().positive().optional(),
 });
 
+/**
+ * Schema for a fallback LLM entry. The agent fails over to these in order when
+ * the primary model errors (e.g. rate-limit / 429 / transient provider failure).
+ * `baseUrl` and `apiKey` let a fallback target a different provider account or
+ * an OpenAI-compatible gateway (e.g. OpenRouter) without polluting the primary's env vars.
+ */
+export const FallbackModelSchema = z.object({
+  model: z.string().min(1, "Fallback model name cannot be empty"),
+  modelProvider: z.string().optional(),
+  baseUrl: z.string().url().optional(),
+  apiKey: z.string().min(1).optional(),
+});
+
 /** Schema for granular recording options */
 export const RecordingOptionsSchema = z.object({
   trace: z.boolean().default(true),
@@ -32,6 +45,7 @@ export const ConfigSchema = z.object({
   cacheDir: z.string().default(".opencheck-cache"),
   model: z.string().default("claude-sonnet-4-5-20250929"),
   modelProvider: z.string().optional(),
+  fallbackModels: z.array(FallbackModelSchema).default([]),
   recursionLimit: z.number().int().positive().default(500),
   recording: RecordingSchema.default(true),
   bailOnFailure: z.boolean().default(false),

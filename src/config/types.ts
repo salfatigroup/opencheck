@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { ConfigSchema, TestCaseSchema, RecordingOptionsSchema } from "./schema.ts";
+import type { ConfigSchema, TestCaseSchema, RecordingOptionsSchema, FallbackModelSchema } from "./schema.ts";
 
 /** A single test case parsed from the config YAML */
 export type TestCase = z.infer<typeof TestCaseSchema>;
@@ -9,6 +9,9 @@ export type Config = z.infer<typeof ConfigSchema>;
 
 /** Granular recording options */
 export type RecordingOptions = z.infer<typeof RecordingOptionsSchema>;
+
+/** A single fallback LLM spec */
+export type FallbackModel = z.infer<typeof FallbackModelSchema>;
 
 /** Normalize the recording field to a consistent { trace, video } object */
 export function resolveRecording(recording: Config["recording"]): { trace: boolean; video: boolean } {

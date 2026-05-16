@@ -337,6 +337,86 @@ describe("ConfigSchema", () => {
     });
   });
 
+  describe("fallbackModels", () => {
+    it("defaults fallbackModels to an empty array when omitted", () => {
+      const result = ConfigSchema.safeParse({
+        tests: [{ case: "test" }],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.fallbackModels).toEqual([]);
+      }
+    });
+
+    it("accepts a single fallback entry with just model + modelProvider", () => {
+      const result = ConfigSchema.safeParse({
+        fallbackModels: [
+          { model: "anthropic/claude-sonnet-4.5", modelProvider: "openai" },
+        ],
+        tests: [{ case: "test" }],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.fallbackModels).toEqual([
+          { model: "anthropic/claude-sonnet-4.5", modelProvider: "openai" },
+        ]);
+      }
+    });
+
+    it("accepts a fallback entry with baseUrl and apiKey (OpenRouter)", () => {
+      const result = ConfigSchema.safeParse({
+        fallbackModels: [
+          {
+            model: "anthropic/claude-sonnet-4.5",
+            modelProvider: "openai",
+            baseUrl: "https://openrouter.ai/api/v1",
+            apiKey: "sk-or-xxx",
+          },
+        ],
+        tests: [{ case: "test" }],
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("accepts multiple fallback entries in priority order", () => {
+      const result = ConfigSchema.safeParse({
+        fallbackModels: [
+          { model: "anthropic/claude-sonnet-4.5", modelProvider: "openai" },
+          { model: "google/gemini-1.5-flash", modelProvider: "openai" },
+        ],
+        tests: [{ case: "test" }],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.fallbackModels).toHaveLength(2);
+      }
+    });
+
+    it("rejects a fallback entry with an empty model name", () => {
+      const result = ConfigSchema.safeParse({
+        fallbackModels: [{ model: "" }],
+        tests: [{ case: "test" }],
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it("rejects a fallback entry with an invalid baseUrl", () => {
+      const result = ConfigSchema.safeParse({
+        fallbackModels: [{ model: "x", baseUrl: "not-a-url" }],
+        tests: [{ case: "test" }],
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it("rejects a fallback entry with an empty apiKey", () => {
+      const result = ConfigSchema.safeParse({
+        fallbackModels: [{ model: "x", apiKey: "" }],
+        tests: [{ case: "test" }],
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
   describe("recording as object", () => {
     it("accepts recording as an object with trace and video", () => {
       const result = ConfigSchema.safeParse({

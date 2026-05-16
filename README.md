@@ -260,6 +260,22 @@ opencheck --config tests.yaml
 
 Any provider supported by [LangChain's initChatModel](https://js.langchain.com/docs/how_to/chat_models_universal_init/) works. Install the provider package and set `modelProvider` accordingly (e.g., `openai`, `fireworks`, `mistralai`).
 
+### Fallback Models (rate-limit failover)
+
+Configure one or more `fallbackModels` to fail over when the primary errors out (e.g. Groq 429 → OpenRouter):
+
+```yaml
+model: "llama-3.3-70b-versatile"
+modelProvider: "groq"
+fallbackModels:
+  - model: "anthropic/claude-sonnet-4.5"
+    modelProvider: "openai"
+    baseUrl: "https://openrouter.ai/api/v1"
+    apiKey: "${OPENROUTER_API_KEY}"
+```
+
+Each fallback gets its own retry budget (`llmRetryAttempts`) before the chain advances. See [docs/configuration.md#fallback-models](docs/configuration.md#fallback-models) for full semantics.
+
 ## Tech Stack
 
 | Component | Technology |
