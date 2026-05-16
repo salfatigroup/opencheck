@@ -53,6 +53,7 @@ jobs:
           cat /tmp/opencheck-output.txt
 
       - name: Upload test recordings
+        id: upload-recordings
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -60,6 +61,61 @@ jobs:
           path: ${{ inputs.working-directory }}/.opencheck-recordings/
           if-no-files-found: ignore
           retention-days: ${{ inputs.artifact-retention-days }}
+
+      - name: Write test summary
+        if: always()
+        shell: bash
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          exit_code="${{ steps.opencheck.outputs.exit_code }}"
+          if [ "$exit_code" = "0" ]; then
+            echo "## ✅ OpenCheck Results" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "All tests passed." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## ❌ OpenCheck Results" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Some tests failed." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "<details><summary>Full output</summary>" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat /tmp/opencheck-output.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "</details>" >> "$GITHUB_STEP_SUMMARY"
+
+          has_screenshots=false
+          for dir in .opencheck-recordings/*/; do
+            [ -d "$dir" ] || continue
+            if [ -f "$dir/before.png" ] || [ -f "$dir/after.png" ]; then
+              has_screenshots=true
+              break
+            fi
+          done
+
+          if [ "$has_screenshots" = "true" ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "### 📸 Failure Screenshots" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Before/after screenshots for failed tests are available in the **opencheck-recordings** artifact." >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Test | Screenshots |" >> "$GITHUB_STEP_SUMMARY"
+            echo "|------|------------|" >> "$GITHUB_STEP_SUMMARY"
+            for dir in .opencheck-recordings/*/; do
+              [ -d "$dir" ] || continue
+              if [ -f "$dir/before.png" ] || [ -f "$dir/after.png" ]; then
+                test_name=$(basename "$dir")
+                files=""
+                [ -f "$dir/before.png" ] && files="before.png"
+                [ -f "$dir/after.png" ] && files="${files:+$files, }after.png"
+                echo "| \`$test_name\` | $files |" >> "$GITHUB_STEP_SUMMARY"
+              fi
+            done
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "> 📥 Download the **opencheck-recordings** artifact from the artifacts section above to view screenshots." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Comment on PR
         if: always() && github.event.pull_request

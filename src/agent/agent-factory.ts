@@ -2,6 +2,7 @@ import { MultiServerMCPClient } from "@langchain/mcp-adapters";
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { join, resolve } from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { z } from "zod";
 import { StepRecorder } from "../cache/step-recorder.ts";
 import {
@@ -98,16 +99,17 @@ export class AgentFactory {
    * @returns AgentExecutionResult with pass/fail, steps, and message
    */
   async executeTest(testCase: string, baseUrl: string): Promise<AgentExecutionResult> {
-    const recordingDir = this.config.recording
-      ? resolve(join(".opencheck-recordings", sanitizeTestName(testCase)))
-      : undefined;
+    const outputDir = resolve(join(".opencheck-recordings", sanitizeTestName(testCase)));
+    const recordingDir = this.config.recording ? outputDir : undefined;
     const mcpConfig = buildMcpServerConfig(this.config, this.runtimeOptions, recordingDir);
     const client = new MultiServerMCPClient(mcpConfig);
     const recorder = new StepRecorder();
+    let mcpTools: DynamicStructuredTool[] = [];
 
     try {
-      const mcpTools = await client.getTools();
+      mcpTools = await client.getTools();
       let latestSnapshotText: string | null = null;
+      let initialScreenshotData: Buffer | null = null;
 
       // Wrap tools with recorder to capture steps
       const wrappedMcpTools = mcpTools.map((tool) => {
@@ -123,6 +125,11 @@ export class AgentFactory {
             tool.name,
             enrichToolInputWithSnapshot(normalizeToolInput(input), latestSnapshotText),
           );
+
+          if (tool.name === "browser_navigate" && !initialScreenshotData) {
+            initialScreenshotData = await captureScreenshotBuffer(mcpTools);
+          }
+
           return textResult;
         };
         return { ...tool, invoke: wrappedInvoke };
@@ -149,13 +156,20 @@ export class AgentFactory {
       const passed = lastMessage.includes("TEST_PASSED");
       const outcome = skipped ? "skipped" as const : passed ? "passed" as const : "failed" as const;
 
+      if (outcome === "failed") {
+        await saveFailureScreenshots(mcpTools, outputDir, initialScreenshotData);
+      }
+
       return {
         outcome,
         steps: recorder.getSteps(),
         message: lastMessage,
-        recordingDir,
+        recordingDir: recordingDir ?? (outcome === "failed" ? outputDir : undefined),
       };
     } catch (error) {
+      if (mcpTools.length > 0) {
+        await saveFailureScreenshots(mcpTools, outputDir, null);
+      }
       const wrappedError =
         error instanceof Error && isTransientError(error)
           ? new TransientLLMError(error.message, { cause: error })
@@ -164,6 +178,7 @@ export class AgentFactory {
         outcome: "failed",
         steps: recorder.getSteps(),
         message: formatAgentError(wrappedError, testCase, this.config.recursionLimit),
+        recordingDir: outputDir,
       };
     } finally {
       await client.close();
@@ -188,4 +203,64 @@ export class AgentFactory {
       },
     });
   }
+}
+
+async function captureScreenshotBuffer(
+  tools: { name: string; invoke: (input: Record<string, unknown>) => Promise<unknown> }[],
+): Promise<Buffer | null> {
+  const tool = tools.find((t) => t.name === "browser_screenshot");
+  if (!tool) return null;
+
+  try {
+    const result = await tool.invoke({});
+    const raw = typeof result === "string" ? result : JSON.stringify(result);
+    const base64 = extractBase64Image(raw);
+    return base64 ? Buffer.from(base64, "base64") : null;
+  } catch {
+    return null;
+  }
+}
+
+async function saveFailureScreenshots(
+  tools: { name: string; invoke: (input: Record<string, unknown>) => Promise<unknown> }[],
+  outputDir: string,
+  beforeData: Buffer | null,
+): Promise<void> {
+  const afterData = await captureScreenshotBuffer(tools);
+  if (!beforeData && !afterData) return;
+
+  mkdirSync(outputDir, { recursive: true });
+  if (beforeData) {
+    writeFileSync(join(outputDir, "before.png"), beforeData);
+  }
+  if (afterData) {
+    writeFileSync(join(outputDir, "after.png"), afterData);
+  }
+}
+
+function extractBase64Image(raw: string): string | null {
+  const dataUriMatch = raw.match(/data:image\/png;base64,([A-Za-z0-9+/=]+)/);
+  if (dataUriMatch?.[1]) return dataUriMatch[1];
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === "object" && parsed !== null) {
+      if (parsed.data && typeof parsed.data === "string") return parsed.data;
+      const items = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsed.content) ? parsed.content : [];
+      for (const item of items) {
+        if (item.type === "image" && item.data) return item.data;
+      }
+    }
+  } catch {
+    // not JSON
+  }
+
+  const trimmed = raw.trim();
+  if (trimmed.length >= 100 && /^[A-Za-z0-9+/\n=]+$/.test(trimmed)) {
+    return trimmed.replace(/\n/g, "");
+  }
+
+  return null;
 }
