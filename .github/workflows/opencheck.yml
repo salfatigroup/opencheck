@@ -23,6 +23,16 @@ on:
         required: false
         type: number
         default: 30
+      cache:
+        description: "Persist ~/.cache/ms-playwright and .opencheck-cache via actions/cache. Set false to force every run to derive fresh."
+        required: false
+        type: boolean
+        default: true
+      cache-key-extra:
+        description: "Suffix appended to the step-cache key (e.g. hashFiles('src/**')) to invalidate when app source changes — opencheck's LLM self-healing can route past real regressions otherwise."
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -40,6 +50,25 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ inputs.bun-version }}
+
+      - name: Restore Playwright browser cache
+        if: inputs.cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}
+          restore-keys: |
+            playwright-${{ runner.os }}
+
+      - name: Restore opencheck step cache
+        if: inputs.cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ inputs.working-directory }}/.opencheck-cache
+          key: opencheck-cache-${{ runner.os }}-${{ hashFiles(format('{0}/{1}', inputs.working-directory, inputs.config)) }}-${{ inputs.cache-key-extra }}
+          restore-keys: |
+            opencheck-cache-${{ runner.os }}-${{ hashFiles(format('{0}/{1}', inputs.working-directory, inputs.config)) }}-
+            opencheck-cache-${{ runner.os }}-
 
       - name: Run OpenCheck
         id: opencheck
