@@ -1,6 +1,28 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { buildMcpServerConfig } from "../../../src/agent/mcp-client.ts";
 import type { Config } from "../../../src/config/types.ts";
+
+const LEGACY_FLAGS = new Set([
+  "--browser",
+  "--headless",
+  "--isolated",
+  "--output-dir",
+  "--save-session",
+  "--save-trace",
+  "--save-video",
+  "--user-data-dir",
+  "--viewport-size",
+]);
+
+const MODERN_FLAGS = new Set([
+  "--browser",
+  "--headless",
+  "--isolated",
+  "--output-dir",
+  "--save-session",
+  "--user-data-dir",
+  "--viewport-size",
+]);
 
 describe("buildMcpServerConfig", () => {
   const baseConfig: Config = {
@@ -84,53 +106,119 @@ describe("buildMcpServerConfig", () => {
     expect(serverNames).toHaveLength(1);
   });
 
-  it("includes recording flags when recording is enabled", () => {
-    const config = buildMcpServerConfig({ ...baseConfig, recording: true });
-    const args = config.mcpServers["playwright"]!.args;
-    expect(args).toContain("--save-trace");
-    expect(args.some((a) => a.startsWith("--save-video="))).toBe(true);
+  describe("recording (legacy @playwright/mcp <0.0.69)", () => {
+    it("includes recording flags when recording is enabled", () => {
+      const config = buildMcpServerConfig({ ...baseConfig, recording: true }, { supportedFlags: LEGACY_FLAGS });
+      const args = config.mcpServers["playwright"]!.args;
+      expect(args).toContain("--save-trace");
+      expect(args.some((a) => a.startsWith("--save-video="))).toBe(true);
+    });
+
+    it("includes output-dir when recording is enabled and outputDir is provided", () => {
+      const config = buildMcpServerConfig(
+        { ...baseConfig, recording: true },
+        { supportedFlags: LEGACY_FLAGS },
+        "/tmp/recordings",
+      );
+      const args = config.mcpServers["playwright"]!.args;
+      expect(args).toContain("--output-dir");
+      expect(args).toContain("/tmp/recordings");
+    });
+
+    it("includes only trace when recording is { trace: true, video: false }", () => {
+      const config = buildMcpServerConfig(
+        { ...baseConfig, recording: { trace: true, video: false } },
+        { supportedFlags: LEGACY_FLAGS },
+      );
+      const args = config.mcpServers["playwright"]!.args;
+      expect(args).toContain("--save-trace");
+      expect(args.some((a) => a.startsWith("--save-video="))).toBe(false);
+    });
+
+    it("includes only video when recording is { trace: false, video: true }", () => {
+      const config = buildMcpServerConfig(
+        { ...baseConfig, recording: { trace: false, video: true } },
+        { supportedFlags: LEGACY_FLAGS },
+      );
+      const args = config.mcpServers["playwright"]!.args;
+      expect(args).not.toContain("--save-trace");
+      expect(args.some((a) => a.startsWith("--save-video="))).toBe(true);
+    });
+
+    it("includes both trace and video when recording is { trace: true, video: true }", () => {
+      const config = buildMcpServerConfig(
+        { ...baseConfig, recording: { trace: true, video: true } },
+        { supportedFlags: LEGACY_FLAGS },
+      );
+      const args = config.mcpServers["playwright"]!.args;
+      expect(args).toContain("--save-trace");
+      expect(args.some((a) => a.startsWith("--save-video="))).toBe(true);
+    });
+  });
+
+  describe("recording (modern @playwright/mcp >=0.0.69)", () => {
+    it("substitutes --save-session for --save-trace and warns", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      try {
+        const config = buildMcpServerConfig(
+          { ...baseConfig, recording: { trace: true, video: false } },
+          { supportedFlags: MODERN_FLAGS },
+        );
+        const args = config.mcpServers["playwright"]!.args;
+        expect(args).not.toContain("--save-trace");
+        expect(args).toContain("--save-session");
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining("--save-trace"));
+      } finally {
+        warn.mockRestore();
+      }
+    });
+
+    it("skips --save-video with a warning when unsupported", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      try {
+        const config = buildMcpServerConfig(
+          { ...baseConfig, recording: { trace: false, video: true } },
+          { supportedFlags: MODERN_FLAGS },
+        );
+        const args = config.mcpServers["playwright"]!.args;
+        expect(args.some((a) => a.startsWith("--save-video"))).toBe(false);
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining("--save-video"));
+      } finally {
+        warn.mockRestore();
+      }
+    });
+
+    it("includes --output-dir alongside the session fallback", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      try {
+        const config = buildMcpServerConfig(
+          { ...baseConfig, recording: true },
+          { supportedFlags: MODERN_FLAGS },
+          "/tmp/recordings",
+        );
+        const args = config.mcpServers["playwright"]!.args;
+        expect(args).toContain("--save-session");
+        expect(args).toContain("--output-dir");
+        expect(args).toContain("/tmp/recordings");
+      } finally {
+        warn.mockRestore();
+      }
+    });
   });
 
   it("omits recording flags when recording is disabled", () => {
     const config = buildMcpServerConfig(baseConfig);
     const args = config.mcpServers["playwright"]!.args;
     expect(args).not.toContain("--save-trace");
+    expect(args).not.toContain("--save-session");
     expect(args.some((a) => a.startsWith("--save-video="))).toBe(false);
-  });
-
-  it("includes output-dir when recording is enabled and outputDir is provided", () => {
-    const config = buildMcpServerConfig({ ...baseConfig, recording: true }, "/tmp/recordings");
-    const args = config.mcpServers["playwright"]!.args;
-    expect(args).toContain("--output-dir");
-    expect(args).toContain("/tmp/recordings");
-  });
-
-  it("includes only trace when recording is { trace: true, video: false }", () => {
-    const config = buildMcpServerConfig({ ...baseConfig, recording: { trace: true, video: false } });
-    const args = config.mcpServers["playwright"]!.args;
-    expect(args).toContain("--save-trace");
-    expect(args.some((a) => a.startsWith("--save-video="))).toBe(false);
-  });
-
-  it("includes only video when recording is { trace: false, video: true }", () => {
-    const config = buildMcpServerConfig({ ...baseConfig, recording: { trace: false, video: true } });
-    const args = config.mcpServers["playwright"]!.args;
-    expect(args).not.toContain("--save-trace");
-    expect(args.some((a) => a.startsWith("--save-video="))).toBe(true);
-  });
-
-  it("includes both trace and video when recording is { trace: true, video: true }", () => {
-    const config = buildMcpServerConfig({ ...baseConfig, recording: { trace: true, video: true } });
-    const args = config.mcpServers["playwright"]!.args;
-    expect(args).toContain("--save-trace");
-    expect(args.some((a) => a.startsWith("--save-video="))).toBe(true);
   });
 
   it("omits recording flags when recording is { trace: false, video: false }", () => {
     const config = buildMcpServerConfig({ ...baseConfig, recording: { trace: false, video: false } });
     const args = config.mcpServers["playwright"]!.args;
     expect(args).not.toContain("--save-trace");
+    expect(args).not.toContain("--save-session");
     expect(args.some((a) => a.startsWith("--save-video="))).toBe(false);
   });
-
 });
